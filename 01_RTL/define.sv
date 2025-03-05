@@ -83,13 +83,12 @@
 time paramemters
 *****************************************/
 //`define CLK_DEFINE 2000 //3000ps
-`define CLK_DEFINE 3 //3ns
+`define CLK_DEFINE 1 //3ns
 
 //define latency cycles
-`define POWER_UP_LATENCY 14
-`define CYCLE_TXPR 81
-`define CYCLE_TMRD 9  //tMRD = 4 cycles   (4-1) * 3 <- LMR0~LMR3 total waiting time
-`define CYCLE_TDLLK 512
+`define CYCLE_TXPR 81       //tXPR = 81 cycles = 81*3 = 243ns, 
+`define CYCLE_TMRD 9        //tMRD = 4 cycles   (4-1) * 3 <- LMR0~LMR3 total waiting time
+`define CYCLE_TDLLK 512     //tDLLK = 512 cycles
 `define CYCLE_TRCD 4  //tRCD = 5 cycles, new timing 11000(ps) / 3000(ps) = 4
 `define CYCLE_TRC  8 //tRC = 17 cycles, new timing 23000(ps) / 3000(ps) = 8
 `define CYCLE_TCCD 4  //tCCD = 4 cycles, same
@@ -188,21 +187,20 @@ time paramemters
 `define MR3_CONFIG 0     // set by default
 //------------------------------------------------------------
 
-
 /*******************************************************
 bit width definations
 ********************************************************/
 `define DM_BITS    2
 `define BA_BITS    3
+
+`define ROW_ADDR_BITS 16
+`define COL_ADDR_BITS 4
+`define BANK_ADDR_BITS 2
+
 `define DQ_BITS    128
 `define DQS_BITS   2
-`define ROW_BITS   16
-`define COL_BITS   4
-`define ADDR_BITS  `COL_BITS+`ROW_BITS
-
-
-`define USER_COMMAND_BITS 31
-`define MEM_CTR_COMMAND_BITS 29
+`define FRONTEND_WORD_SIZE  256
+`define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
 
 // Schedule command defination, the physical IO FSM controlled by current bank state and counters
 `define ATCMD_NOP        4'd0
@@ -222,12 +220,12 @@ bit width definations
 `define ISSUE_BUF_PTR_SIZE 4
 `define ISSUE_BUF_SIZE 8
 
-`define ISU_FIFO_WIDTH 4+`ADDR_BITS+`BA_BITS //{command , addr , bank}
+`define ISU_FIFO_WIDTH 21 //{command , addr , bank}
                            //[20:17]   [16:3] [2:0]
 
 `define OUT_FIFO_WIDTH  2 //{read/write,Burst_Length} ;
 
-`define WDATA_FIFO_WIDTH `DQ_BITS*8+1//{wdata,burst_length}
+`define WDATA_FIFO_WIDTH 1025//{wdata,burst_length}
 //------------------------------
 //for bank FSM process
 //------------------------------
@@ -241,4 +239,4 @@ bit width definations
 //for cmd_scheduler
 //------------------------------
 `define BA_PROC_CMD_WIDTH 3
-`define BA_INFO_WIDTH `FSM_WIDTH2+`ADDR_BITS+3//`FSM_WIDTH2+14+3 //{ba_state,addr,process_cmd}
+`define BA_INFO_WIDTH 22//`FSM_WIDTH2+14+3 //{ba_state,addr,process_cmd}

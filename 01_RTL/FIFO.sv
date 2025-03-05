@@ -4,17 +4,17 @@
 import frontend_command_definition_pkg::*;
 
 module FIFO
-          #(parameter WIDTH = 4,
-            parameter DEPTH_LEN = 4,// 2^4 depth
+          #(parameter DATA_WIDTH = 4,
+            parameter FIFO_DEPTH = 4,// 2^4 depth
             parameter ALMOST_FULL_LEFT = 4) 
           (
           i_clk, i_rst_n, i_data, wr_en,
           rd_en, o_data, o_full, o_empty, o_almost_full
           );
 
-    logic [WIDTH-1 : 0]  mem [0:(1<<DEPTH_LEN)-1];
-    logic [DEPTH_LEN: 0] rd_ptr, wr_ptr;
-    logic [DEPTH_LEN: 0] n_rd_ptr, n_wr_ptr;
+    logic [DATA_WIDTH-1 : 0]  mem [0:(1<<FIFO_DEPTH)-1];
+    logic [FIFO_DEPTH: 0] rd_ptr, wr_ptr;
+    logic [FIFO_DEPTH: 0] n_rd_ptr, n_wr_ptr;
     logic o_almost_full;
     logic n_o_almost_full;
     logic o_empty, o_full;
@@ -27,9 +27,9 @@ module FIFO
     assign wr_req = wr_en && !o_full;
 
     // assign o_empty = (wr_ptr == rd_ptr);
-    // assign o_full = (wr_ptr == {~rd_ptr[DEPTH_LEN], rd_ptr[DEPTH_LEN-1:0]});
+    // assign o_full = (wr_ptr == {~rd_ptr[FIFO_DEPTH], rd_ptr[FIFO_DEPTH-1:0]});
 
-    logic [DEPTH_LEN - 1:0] almost_full_left;
+    logic [FIFO_DEPTH - 1:0] almost_full_left;
     assign almost_full_left = ALMOST_FULL_LEFT;
 
     always_ff @(posedge i_clk or negedge i_rst_n) begin
@@ -59,7 +59,7 @@ module FIFO
     end
 
     always_comb begin
-        if(n_wr_ptr == {~n_rd_ptr[DEPTH_LEN], n_rd_ptr[DEPTH_LEN-1:0]}) begin
+        if(n_wr_ptr == {~n_rd_ptr[FIFO_DEPTH], n_rd_ptr[FIFO_DEPTH-1:0]}) begin
             n_o_full = 1;
         end
         else begin
@@ -68,7 +68,7 @@ module FIFO
     end
 
     always_comb begin
-        if((n_wr_ptr + almost_full_left) >= {~n_rd_ptr[DEPTH_LEN], n_rd_ptr[DEPTH_LEN-1:0]}) begin
+        if((n_wr_ptr + almost_full_left) >= {~n_rd_ptr[FIFO_DEPTH], n_rd_ptr[FIFO_DEPTH-1:0]}) begin
             n_o_almost_full = 1;
         end
         else begin
@@ -96,18 +96,18 @@ module FIFO
 
     always_ff @( posedge clk or negedge i_rst_n ) begin
         if( !i_rst_n ) begin
-            for( i = 0; i < (1<<DEPTH_LEN); i = i + 1 ) begin
+            for( i = 0; i < (1<<FIFO_DEPTH); i = i + 1 ) begin
                 mem[i] <= 0;
             end
         end 
         else begin
             if( wr_req ) begin
-                mem[wr_ptr[DEPTH_LEN-1:0]] <= i_data;
+                mem[wr_ptr[FIFO_DEPTH-1:0]] <= i_data;
             end
         end
     end
 
-    assign o_data = mem[rd_ptr[DEPTH_LEN-1:0]];
+    assign o_data = mem[rd_ptr[FIFO_DEPTH-1:0]];
 
 
 

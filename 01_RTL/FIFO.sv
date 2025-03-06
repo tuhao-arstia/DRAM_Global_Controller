@@ -5,18 +5,18 @@ import frontend_command_definition_pkg::*;
 
 module FIFO
           #(parameter DATA_WIDTH = 4,
-            parameter FIFO_DEPTH = 4,// 2^4 depth
-            parameter ALMOST_FULL_LEFT = 4) 
+            // 2^4 depth
+            parameter FIFO_DEPTH = 4
+          ) 
           (
           i_clk, i_rst_n, i_data, wr_en,
-          rd_en, o_data, o_full, o_empty, o_almost_full
+          rd_en, o_data, o_full, o_empty
           );
 
-    logic [DATA_WIDTH-1 : 0]  mem [0:(1<<FIFO_DEPTH)-1];
-    logic [FIFO_DEPTH: 0] rd_ptr, wr_ptr;
-    logic [FIFO_DEPTH: 0] n_rd_ptr, n_wr_ptr;
-    logic o_almost_full;
-    logic n_o_almost_full;
+
+    logic [DATA_WIDTH-1 : 0] mem [0:(1 << FIFO_DEPTH)-1];
+    logic [FIFO_DEPTH : 0] rd_ptr, wr_ptr;
+    logic [FIFO_DEPTH : 0] n_rd_ptr, n_wr_ptr;
     logic o_empty, o_full;
     logic n_o_empty, n_o_full;
 
@@ -26,24 +26,16 @@ module FIFO
     assign rd_req = rd_en && !o_empty;
     assign wr_req = wr_en && !o_full;
 
-    // assign o_empty = (wr_ptr == rd_ptr);
-    // assign o_full = (wr_ptr == {~rd_ptr[FIFO_DEPTH], rd_ptr[FIFO_DEPTH-1:0]});
-
-    logic [FIFO_DEPTH - 1:0] almost_full_left;
-    assign almost_full_left = ALMOST_FULL_LEFT;
-
     always_ff @(posedge i_clk or negedge i_rst_n) begin
-        if(!i_rst) begin
+        if(!i_rst_n) begin
             wr_ptr <= 0;
             rd_ptr <= 0;
-            o_almost_full <= 0;
             o_empty <= 1;
             o_full <= 0;
         end
         else begin
             wr_ptr <= n_wr_ptr;
             rd_ptr <= n_rd_ptr;
-            o_almost_full <= n_o_almost_full;
             o_empty <= n_o_empty;
             o_full <= n_o_full;
         end
@@ -68,15 +60,6 @@ module FIFO
     end
 
     always_comb begin
-        if((n_wr_ptr + almost_full_left) >= {~n_rd_ptr[FIFO_DEPTH], n_rd_ptr[FIFO_DEPTH-1:0]}) begin
-            n_o_almost_full = 1;
-        end
-        else begin
-            n_o_almost_full = 0;
-        end
-    end
-
-    always_comb begin
         if( wr_req ) begin
             n_wr_ptr = wr_ptr + 1;
         end
@@ -96,7 +79,7 @@ module FIFO
 
     always_ff @( posedge clk or negedge i_rst_n ) begin
         if( !i_rst_n ) begin
-            for( i = 0; i < (1<<FIFO_DEPTH); i = i + 1 ) begin
+            for( i = 0; i < (1 << FIFO_DEPTH); i = i + 1 ) begin
                 mem[i] <= 0;
             end
         end 

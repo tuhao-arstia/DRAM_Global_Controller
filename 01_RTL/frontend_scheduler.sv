@@ -15,7 +15,30 @@ import frontend_command_definition_pkg::*;
 module frontend_scheduler(
                           clk,
                           rst_n,
-                          something
+                          // interconnection to frontend scheduler
+                          o_controller_ready,
+                          i_interconnection_request_valid,
+                          i_interconnection_request,
+                          i_interconnection_write_data,
+                          i_interconnection_write_data_last,
+                          // frontend scheduler to backend controller
+                          i_backend_controller_ready,
+                          o_frontend_command_valid,
+                          o_frontend_command,
+                          o_frontend_write_data,
+                          o_frontend_write_data_last,
+                          // backend controller to frontend scheduler
+                          o_frontend_receive_ready,
+                          i_returned_data_valid,
+                          i_returned_data,
+                          i_returned_data_last????????,
+                          // frontend scheduler to interconnection
+                          i_interconnection_ready,
+                          o_controller_request_valid,
+                          o_controller_read_data,
+                          o_controller_read_data_last???????,
+                          o_controller_request_ID,
+                          o_controller_core_id, 
 );
 
 import usertype::*;
@@ -33,7 +56,8 @@ input i_wdata;
 frontend_command_t command;
 // busy flag to not to accept new command when the scheduler is busy
 
-always_ff @(posedge clk or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) 
+begin: INPUT_COMMAND
     if(!rst_n) begin
         command <= 0;
     end
@@ -47,7 +71,7 @@ end
 // RAW detection
 logic read_after_write;
 always_comb begin
-    if(command.op_type == OP_READ) begin
+    if(command.op_type == OP_READ /*write command fifo same address*/) begin
         read_after_write = 1;
     end
     else begin

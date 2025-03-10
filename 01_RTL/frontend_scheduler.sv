@@ -8,15 +8,18 @@
 
 `include "userType_pkg.sv"
 `include "define.sv"
-`include "FIFO.sv"
+`include "request_fifo.sv"
+`include "write_data_fifo.sv"
+`include "write_addr_fifo.sv"
 
+import usertype::*;
 import frontend_command_definition_pkg::*;
 
 module frontend_scheduler(
-                          clk,
-                          rst_n,
+                          i_clk,
+                          i_rst_n,
                           // interconnection to frontend scheduler
-                          o_controller_ready,
+                          o_scheduler_ready,
                           i_interconnection_request_valid,
                           i_interconnection_request,
                           i_interconnection_write_data,
@@ -31,53 +34,131 @@ module frontend_scheduler(
                           o_frontend_receive_ready,
                           i_returned_data_valid,
                           i_returned_data,
-                          i_returned_data_last????????,
                           // frontend scheduler to interconnection
                           i_interconnection_ready,
-                          o_controller_request_valid,
-                          o_controller_read_data,
-                          o_controller_read_data_last???????,
-                          o_controller_request_ID,
-                          o_controller_core_id, 
+                          o_scheduler_request_valid,
+                          o_scheduler_read_data,
+                          o_scheduler_read_data_last,
+                          o_scheduler_request_ID,
+                          o_scheduler_core_id, 
 );
 
-import usertype::*;
+input logic i_clk;
+input logic i_rst_n;
 
-input clk;
-input rst_n;
-frontend_command_t i_command;
-input i_wlast;
-input i_wdata;
+input logic i_interconnection_request_valid;
+input frontend_interconnection_request_t i_interconnection_request;
+input logic [`FRONTEND_WORD_SIZE-1:0] i_interconnection_write_data;
+input logic i_interconnection_write_data_last;
+
+// input buffer
+frontend_interconnection_request_t interconnection_request;
+logic [`FRONTEND_WORD_SIZE-1:0] interconnection_write_data [0:3];
+logic interconnection_write_data_last;
+
+logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] write_addr;
+//---------------------------------------//
+// Interconnection to Frontend Scheduler //
+//---------------------------------------//
 
 
 
 
-// command decoder
-frontend_command_t command;
 // busy flag to not to accept new command when the scheduler is busy
 
-always_ff @(posedge clk or negedge rst_n) 
+always_ff @(posedge i_clk or negedge i_rst_n) 
 begin: INPUT_COMMAND
-    if(!rst_n) begin
-        command <= 0;
+    if(!i_rst_n) 
+    begin
+        interconnection_request <= 0;
     end
-    else begin
-        // if handshake
-        command <= i_command;
-        // else keep the command
+    else if (i_interconnection_request_valid)
+    begin
+        interconnection_request <= i_interconnection_request;
+    end
+    else
+    begin
+        interconnection_request <= 0;
     end
 end
 
-// RAW detection
-logic read_after_write;
-always_comb begin
-    if(command.op_type == OP_READ /*write command fifo same address*/) begin
-        read_after_write = 1;
+always_ff @(posedge i_clk or negedge i_rst_n)
+begin: INPUT_WRITE_DATA
+    if(!i_rst_n)
+    begin
+        interconnection_write_data[3] <= 0;
+        interconnection_write_data[2] <= 0;
+        interconnection_write_data[1] <= 0;
+        interconnection_write_data[0] <= 0;
     end
-    else begin
-        read_after_write = 0;
+    else if(i_interconnection_request_valid && i_interconnection_request.op_type == 1'b1)
+    begin
+        interconnection_write_data[3] <= interconnection_write_data[2];
+        interconnection_write_data[2] <= interconnection_write_data[1];
+        interconnection_write_data[1] <= interconnection_write_data[0];
+        interconnection_write_data[0] <= i_interconnection_write_data;
+    end
+    else
+    begin
+        interconnection_write_data[3] <= interconnection_write_data[2];
+        interconnection_write_data[2] <= interconnection_write_data[1];
+        interconnection_write_data[1] <= interconnection_write_data[0];
+        interconnection_write_data[0] <= 0;
     end
 end
+
+always_ff @(posedge i_clk or negedge i_rst_n)
+begin: INPUT_WRITE_DATA_LAST
+    if(!i_rst_n)
+    begin
+        interconnection_write_data_last <= 0;
+    end
+    else
+    begin
+        interconnection_write_data_last <= i_interconnection_write_data_last;
+    end
+end
+
+// read after write detection
+
+
+// read request fifo
+request_fifo #(.DATA_WIDTH(1), .FIFO_DEPTH(4)) read_request_fifo (
+    .i_clk(i_clk),
+    .i_rst_n(i_rst_n),
+    .i_data(interconnection_request.command.op_type),
+    .wr_en(),
+    .rd_en(),
+    .o_data(n_read_request),
+    .o_full(),
+    .o_empty()
+);
+
+// write request fifo
+
+// write data fifo
+
+// write address fifo
+assign write_addr = {interconnection_request.command.bank_addr, interconnection_request.command.row_addr, interconnection_request.command.col_addr};
+write_addr_fifo #(.DATA_WIDTH(`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS), .FIFO_DEPTH(4)) write_addr_fifo (
+    .i_clk(i_clk),
+    .i_rst_n(i_rst_n),
+    .i_data(write_addr),
+    .wr_en(interconnection_write_data_last && interconnection_request.command.op_type == 1'b0),
+    .rd_en(),
+    .o_addr_0(),
+    .o_addr_1(),
+    .o_addr_2(),
+    .o_addr_3(),
+    .o_addr_4(),
+    .o_addr_5(),
+    .o_addr_6(),
+    .o_addr_7(),
+    .o_full(),
+    .o_empty()
+);
+
+
 
 endmodule
 

@@ -10,18 +10,22 @@ module write_data_fifo
                         ) 
                         (
                         i_clk, i_rst_n, i_data,
+                        i_raw_shift,
                         wr_en,
                         rd_en, 
-                        o_data, o_full, o_empty
+                        o_data, o_full, o_empty,
+                        o_raw_data
                         );
 
 input logic i_clk;
 input logic i_rst_n;
 input logic [DATA_WIDTH-1 : 0] i_data;
+input logic i_raw_shift;
 input logic wr_en;
 input logic rd_en;
 output logic [DATA_WIDTH-1 : 0] o_data;
 output logic o_full, o_empty;
+output logic [DATA_WIDTH-1 : 0] o_raw_data;
 
 logic [DATA_WIDTH-1 : 0] mem [0:(1 << FIFO_DEPTH)-1];
 
@@ -102,6 +106,7 @@ always_ff @( posedge i_clk or negedge i_rst_n ) begin: WRITE_DATA_FIFO
 end
 
 assign o_data = mem[rd_ptr[FIFO_DEPTH-1:0]];
+
 
   /*
   * ASSERTIONS Synchronous FIFO

@@ -57,6 +57,17 @@ logic [`FRONTEND_WORD_SIZE-1:0] interconnection_write_data [0:3];
 logic interconnection_write_data_last;
 
 logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] write_addr;
+
+
+// RAW related
+// {valid_bit, addr}
+logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS:0] raw_info [0:7];
+logic raw_valid [0:7];
+logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] raw_addr [0:7];
+logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] raw_current_addr;
+logic raw_flag;
+
+
 //---------------------------------------//
 // Interconnection to Frontend Scheduler //
 //---------------------------------------//
@@ -146,17 +157,73 @@ write_addr_fifo #(.DATA_WIDTH(`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS), .F
     .i_data(write_addr),
     .wr_en(interconnection_write_data_last && interconnection_request.command.op_type == 1'b0),
     .rd_en(),
-    .o_addr_0(),
-    .o_addr_1(),
-    .o_addr_2(),
-    .o_addr_3(),
-    .o_addr_4(),
-    .o_addr_5(),
-    .o_addr_6(),
-    .o_addr_7(),
+    .o_addr_0(raw_info[0]),
+    .o_addr_1(raw_info[1]),
+    .o_addr_2(raw_info[2]),
+    .o_addr_3(raw_info[3]),
+    .o_addr_4(raw_info[4]),
+    .o_addr_5(raw_info[5]),
+    .o_addr_6(raw_info[6]),
+    .o_addr_7(raw_info[7]),
     .o_full(),
     .o_empty()
 );
+
+// RAW detection
+assign raw_current_addr = {interconnection_request.command.bank_addr, interconnection_request.command.row_addr, interconnection_request.command.col_addr};
+always_comb 
+begin: RAW_INFO_DECODE
+    for(i = 0; i < 8; i = i + 1)
+    begin
+       raw_addr[i] = raw_info[i][`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0];
+       raw_valid[i] = raw_info[i][`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS]; 
+    end
+end
+
+always_comb
+begin:RAW_DETECTION
+    if(interconnection_request.command.op_type == OP_READ)
+    begin
+        if(raw_valid[7] && raw_addr[7] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[1] && raw_addr[1] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[2] && raw_addr[2] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[3] && raw_addr[3] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[4] && raw_addr[4] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[5] && raw_addr[5] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[6] && raw_addr[6] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end
+        else if(raw_valid[7] && raw_addr[7] == raw_current_addr)
+        begin
+            raw_flag = 1;
+        end else
+        begin
+            raw_flag = 0;
+        end
+    end else
+    begin
+        raw_flag = 0;
+    end
+end
 
 
 

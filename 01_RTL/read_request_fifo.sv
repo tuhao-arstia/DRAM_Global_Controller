@@ -89,13 +89,15 @@ always_comb begin
 end
 
 always_ff @( posedge i_clk or negedge i_rst_n ) begin: REQUEST_FIFO
-    if( !i_rst_n ) begin
+    if( !i_rst_n ) 
+    begin
         for( i = 0; i < (1 << FIFO_DEPTH); i = i + 1 ) begin
             mem[i] <= 0;
         end
     end 
     else begin
-        if( wr_req ) begin
+        if( wr_req ) 
+        begin
             mem[wr_ptr[FIFO_DEPTH-1:0]] <= i_data;
         end
     end

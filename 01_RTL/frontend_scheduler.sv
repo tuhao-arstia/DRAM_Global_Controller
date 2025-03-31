@@ -27,7 +27,7 @@ module frontend_scheduler(
                           i_interconnection_write_data_last,
                           // frontend scheduler to backend controller
                           i_backend_controller_ready,
-                          i_wdata_queue_ren,
+                          i_backend_controller_wdata_rd_en,
                           o_frontend_command_valid,
                           o_frontend_command,
                           o_frontend_write_data,
@@ -42,8 +42,8 @@ module frontend_scheduler(
                           o_scheduler_request_valid,
                           o_scheduler_read_data,
                           o_scheduler_read_data_last,
-                          o_scheduler_request_ID,
-                          o_scheduler_core_id, 
+                          o_scheduler_request_id,
+                          o_scheduler_core_num, 
 );
 
 input logic i_clk;
@@ -53,6 +53,10 @@ input logic i_interconnection_request_valid;
 input frontend_interconnection_request_t i_interconnection_request;
 input logic [`FRONTEND_WORD_SIZE-1:0] i_interconnection_write_data;
 input logic i_interconnection_write_data_last;
+output logic o_scheduler_ready;
+
+input logic i_backend_controller_ready;
+input logic i_backend_controller_wdata_rd_en;
 
 // transaction signals
 // handshake signals
@@ -63,37 +67,36 @@ frontend_interconnection_request_t interconnection_request;
 logic [`FRONTEND_WORD_SIZE-1:0] interconnection_write_data [0:3];
 logic interconnection_write_data_last;
 
-logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] write_addr;
-
-
 // request fifos
 logic read_request_wr_en, write_request_wr_en;
 logic read_request_rd_en, write_request_rd_en;
-logic read_request_full, write_request_full;
-logic read_request_empty, write_request_empty;
+logic read_request_fifo_full, write_request_fifo_full;
+logic read_request_fifo_empty, write_request_fifo_empty;
 logic write_flush;
-logic n_read_request;
-logic n_write_request;
+frontend_command_t read_request_candidate;
+frontend_command_t write_request_candidate;
 
+// write data fifo 
+logic [`BACKEND_WORD_SIZE-1:0] write_data_fifo_in;
+logic [`BACKEND_WORD_SIZE-1:0] write_data_fifo_out;
+logic write_data_fifo_full, write_data_fifo_empty;
 
-// RAW related
+// write address fifo (RAW related)
+logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] write_addr;
+logic write_addr_fifo_full, write_addr_fifo_empty;
 // raw_info = {valid_bit, addr}
 logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS:0] raw_info [0:7];
-
 logic raw_valid [0:7];
 logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] raw_addr [0:7];
 logic [`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0] raw_current_addr;
 logic raw_flag;
 
+// output logics
+logic n_o_scheduler_ready;
 
 //---------------------------------------//
 // Interconnection to Frontend Scheduler //
 //---------------------------------------//
-
-
-
-
-// busy flag to not to accept new command when the scheduler is busy
 assign hs_interconnection_to_frontend_scheduler = i_interconnection_request_valid && o_scheduler_ready;
 
 always_ff @(posedge i_clk or negedge i_rst_n) 
@@ -150,66 +153,99 @@ begin: INPUT_WRITE_DATA_LAST
     end
 end
 
+
 // read request fifo
-read_request_fifo #(.DATA_WIDTH(1), .FIFO_DEPTH(4)) read_request_fifo (
+read_request_fifo #(.DATA_WIDTH(`BANK_ADDR_BITS+`ROW_ADDR_BITS+`COL_ADDR_BITS+2), .FIFO_DEPTH(4)) read_request_fifo (
     .i_clk(i_clk),
     .i_rst_n(i_rst_n),
-    .i_data(1'b1),
+    .i_data(interconnection_request.command),
     .wr_en(read_request_wr_en),
     .rd_en(read_request_rd_en),
-    .o_data(n_read_request),
-    .o_full(read_request_full),
-    .o_empty(read_request_empty),
+    .o_data(read_request_candidate),
+    .o_full(read_request_fifo_full),
+    .o_empty(read_request_fifo_empty),
 );
 
 assign read_request_wr_en = (interconnection_request.command.op_type == 1'b1);
 
+// change to sequential logic if needed
 always_comb
-begin : READ_REQ_RD_ENABLE
-    // to do list
-
-
-
-    
+begin : READ_REQUEST_FIFO_RD_EN
+    if(i_backend_controller_ready && !read_request_empty)
+    begin
+        if( !(write_flush && !write_request_empty) )
+        begin
+            read_request_rd_en = 1;
+        end
+        else
+        begin
+            read_request_rd_en = 0;
+        end
+    end
+    else
+    begin
+        read_request_rd_en = 0;
+    end
 end
 
 
-
-
 // write request fifo
-write_request_fifo #(.DATA_WIDTH(1), .FIFO_DEPTH(4), .FLUSH_WATERMARK(12)) write_request_fifo (
+write_request_fifo #(.DATA_WIDTH(`BANK_ADDR_BITS+`ROW_ADDR_BITS+`COL_ADDR_BITS+2), .FIFO_DEPTH(4), .FLUSH_WATERMARK(12)) write_request_fifo (
     .i_clk(i_clk),
     .i_rst_n(i_rst_n),
-    .i_data(1'b1),
+    .i_data(interconnection_request.command),
     .i_raw_flag(raw_flag),
     .wr_en(write_request_wr_en),
     .rd_en(write_request_rd_en),
-    .o_data(n_write_request),
-    .o_full(write_request_full),
-    .o_empty(write_request_empty),
+    .o_data(write_request_candidate),
+    .o_full(write_request_fifo_full),
+    .o_empty(write_request_fifo_empty),
     .o_write_flush(write_flush)
 );
 
 assign write_request_wr_en = interconnection_write_data_last;
 
-always_comb 
-begin : WRITE_REQ_RD_ENABLE
-    // to do list
-
-
-
+always_comb
+begin : WRITE_REQUEST_FIFO_RD_EN
+    if(i_backend_controller_ready && !write_request_empty)
+    begin
+        if(read_request_empty || write_flush)
+        begin
+            write_request_rd_en = 1;
+        end
+        else
+        begin
+            write_request_rd_en = 0;
+        end
+    end
+    else
+    begin
+        write_request_rd_en = 0;
+    end
 end
 
+
 // write data fifo
+write_data_fifo #(.DATA_WIDTH(`BACKEND_WORD_SIZE), .FIFO_DEPTH(4)) write_data_fifo (
+    .i_clk(i_clk),
+    .i_rst_n(i_rst_n),
+    .i_data(write_data_fifo_in),
+    .wr_en(write_request_wr_en),
+    .rd_en(i_backend_controller_wdata_rd_en),
+    .o_data(write_data_fifo_out),
+    .o_full(write_data_fifo_full),
+    .o_empty(write_data_fifo_empty),
+);
+
+assign write_data_fifo_in = {interconnection_write_data[3], interconnection_write_data[2], interconnection_write_data[1], interconnection_write_data[0]};
 
 // write address fifo
-assign write_addr = {interconnection_request.command.bank_addr, interconnection_request.command.row_addr, interconnection_request.command.col_addr};
 write_addr_fifo #(.DATA_WIDTH(`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS), .FIFO_DEPTH(4)) write_addr_fifo (
     .i_clk(i_clk),
     .i_rst_n(i_rst_n),
     .i_data(write_addr),
     .wr_en(write_request_wr_en),
-    .rd_en(),
+    .rd_en(write_request_rd_en),
     .o_addr_0(raw_info[0]),
     .o_addr_1(raw_info[1]),
     .o_addr_2(raw_info[2]),
@@ -218,9 +254,11 @@ write_addr_fifo #(.DATA_WIDTH(`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS), .F
     .o_addr_5(raw_info[5]),
     .o_addr_6(raw_info[6]),
     .o_addr_7(raw_info[7]),
-    .o_full(),
-    .o_empty()
+    .o_full(write_addr_fifo_full),
+    .o_empty(write_addr_fifo_empty)
 );
+
+assign write_addr = {interconnection_request.command.bank_addr, interconnection_request.command.row_addr, interconnection_request.command.col_addr};
 
 // RAW detection 
 assign raw_current_addr = {interconnection_request.command.bank_addr, interconnection_request.command.row_addr, interconnection_request.command.col_addr};
@@ -281,6 +319,7 @@ begin:RAW_DETECTION
     end
 end
 
+// to do list : n_o_scheduler_ready logic
 
 
 endmodule

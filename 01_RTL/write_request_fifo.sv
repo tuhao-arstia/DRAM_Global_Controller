@@ -4,7 +4,7 @@
 import frontend_command_definition_pkg::*;
 
 module request_fifo
-                 #(parameter DATA_WIDTH = 1,
+                 #(parameter DATA_WIDTH = `BANK_ADDR_BITS + `ROW_ADDR_BITS + `COL_ADDR_BITS + 2,
                    parameter FIFO_DEPTH = 4,
                    // 2^4 depth
                    parameter FLUSH_WATERMARK = 12
@@ -20,15 +20,15 @@ module request_fifo
 
 input logic i_clk;
 input logic i_rst_n;
-input logic i_data;
+input frontend_command_t i_data;
 input logic i_raw_flag;
 input logic wr_en;
 input logic rd_en;
-output logic [DATA_WIDTH-1 : 0] o_data;
+output frontend_command_t o_data;
 output logic o_full, o_empty;
 output logic o_write_flush;
 
-logic [DATA_WIDTH-1 : 0] mem [0:(1 << FIFO_DEPTH)-1];
+frontend_command_t mem [0:(1 << FIFO_DEPTH)-1];
 
 logic [FIFO_DEPTH : 0] rd_ptr, wr_ptr;
 logic [FIFO_DEPTH : 0] n_rd_ptr, n_wr_ptr;
@@ -110,7 +110,7 @@ always_comb begin
         n_write_flush_num = n_occupied_space - rd_req;
     end
     else begin
-        if( /*o_write_flush &&*/ rd_req ) begin
+        if( rd_req ) begin
             n_write_flush_num = write_flush_num - 1;
         end
         else begin

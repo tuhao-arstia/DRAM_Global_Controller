@@ -1,21 +1,66 @@
 `include "define.sv"
 `include "userType_pkg.sv"
-`include "../00_TESTBED/INF.sv"
 
-program automatic PATTERN(clk1,clk2,rst_n,init_done_flag);
+module PATTERN(
+    i_clk,
+    i_rst_n,
+
+    o_scheduler_ready,
+    i_interconnection_request_valid,
+    i_interconnection_request,
+    i_interconnection_write_data,
+    i_interconnection_write_data_last,
+
+    i_backend_controller_ready,
+    o_frontend_command_valid,
+    o_frontend_command,
+    o_frontend_write_data,
+    o_stall_backend_controller,
+
+    o_frontend_receive_ready,
+    i_returned_data_valid,
+    i_returned_data,
+
+    i_interconnection_ready,
+    o_scheduler_request_valid,
+    o_scheduler_read_data,
+    o_scheduler_read_data_last,
+    o_scheduler_request_id,
+    o_scheduler_core_num
+);
+
+import frontend_command_definition_pkg::*;
 
 output logic clk1;
-output logic clk2;
 output logic rst_n;
-input  logic init_done_flag;
 
-logic[31:0] SIM_CLK_CYCLE = 30000;
-logic[31:0] clock_cycle = 0;
+input logic o_scheduler_ready;
+output logic i_interconnection_request_valid;
+output frontend_command_t i_interconnection_request;
+output logic [`FRONTEND_WORD_SIZE-1:0] i_interconnection_write_data;
+output logic i_interconnection_write_data_last;
+
+output logic i_backend_controller_ready;
+input logic o_frontend_command_valid;
+input frontend_command_t o_frontend_command;
+input logic [`BACKEND_WORD_SIZE-1:0] o_frontend_write_data;
+input logic o_stall_backend_controller;
+
+input logic o_frontend_receive_ready;
+output logic i_returned_data_valid;
+output logic [`BACKEND_WORD_SIZE-1:0] i_returned_data;
+
+output logic i_interconnection_ready;
+input logic o_scheduler_request_valid;  
+input logic [`FRONTEND_WORD_SIZE-1:0] o_scheduler_read_data;
+input logic o_scheduler_read_data_last;
+input req_id_t o_scheduler_request_id;
+input core_num_t o_scheduler_core_num;
+
+// integer declaration
 
 initial exe_task;
-initial clock_cycle_cnt_task;
-initial gen_clk;
-initial gen_clk2;
+
 // initial force_exiting_task;
 //======================================
 //              MAIN
@@ -105,13 +150,5 @@ task congratulation;
     $finish;
 endtask
 
-//======================================
-//              Functions
-//======================================
-function write_request(input logic[31:0] addr, input logic[1023:0] data);
-    
 
-endfunction
-
-
-endprogram
+endmodule

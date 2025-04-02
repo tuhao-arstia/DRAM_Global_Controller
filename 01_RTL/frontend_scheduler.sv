@@ -30,7 +30,6 @@ module frontend_scheduler(
                           i_interconnection_write_data_last,
                           // frontend scheduler to backend controller
                           i_backend_controller_ready,
-                          i_backend_controller_wdata_rd_en,
                           o_frontend_command_valid,
                           o_frontend_command,
                           o_frontend_write_data,
@@ -58,7 +57,6 @@ input logic i_interconnection_write_data_last;
 output logic o_scheduler_ready;
 
 input logic i_backend_controller_ready;
-input logic i_backend_controller_wdata_rd_en;
 output logic o_frontend_command_valid;
 output frontend_command_t o_frontend_command;
 output logic [`BACKEND_WORD_SIZE-1:0] o_frontend_write_data;

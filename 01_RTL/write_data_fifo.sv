@@ -4,7 +4,7 @@
 import frontend_command_definition_pkg::*;
 
 module write_data_fifo
-                        #(parameter DATA_WIDTH = 1024,
+                        #(parameter DATA_WIDTH = `BACKEND_WORD_SIZE,
                           parameter FIFO_DEPTH = 4
                           // 2^4 depth
                         ) 
@@ -12,7 +12,7 @@ module write_data_fifo
                         i_clk, i_rst_n, i_data,
                         wr_en,
                         rd_en, 
-                        o_data, o_full, o_empty,
+                        o_data, o_full, o_empty
                         );
 
 input logic i_clk;

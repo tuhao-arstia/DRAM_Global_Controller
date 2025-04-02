@@ -3,32 +3,39 @@
 
 import frontend_command_definition_pkg::*;
 
-module read_request_fifo
-                 #(parameter DATA_WIDTH = `BANK_ADDR_BITS + `ROW_ADDR_BITS + `COL_ADDR_BITS + 2,
-                   parameter FIFO_DEPTH = 4
-                   // 2^4 depth
-                 ) 
-                 (
-                 i_clk, i_rst_n, i_data,
-                 wr_en,
-                 rd_en, 
-                 o_data, o_full, o_empty
-                 );
+module read_data_fifo
+                        #(parameter DATA_WIDTH = `BACKEND_WORD_SIZE,
+                          parameter FIFO_DEPTH = 4,
+                          // 2^4 depth
+                          parameter STALL_WATERMARK = 3,
+                          // 2^3
+                        ) 
+                        (
+                        i_clk, i_rst_n, i_data,
+                        wr_en,
+                        rd_en, 
+                        o_data, o_full, o_empty,
+                        o_stall
+                        );
 
 input logic i_clk;
 input logic i_rst_n;
-input frontend_command_t i_data;
+input logic [DATA_WIDTH-1 : 0] i_data;
 input logic wr_en;
 input logic rd_en;
-output frontend_command_t o_data;
+output logic [DATA_WIDTH-1 : 0] o_data;
 output logic o_full, o_empty;
+output logic o_stall;
 
-frontend_command_t mem [0:(1 << FIFO_DEPTH)-1];
+logic [DATA_WIDTH-1 : 0] mem [0:(1 << FIFO_DEPTH)-1];
 
 logic [FIFO_DEPTH : 0] rd_ptr, wr_ptr;
 logic [FIFO_DEPTH : 0] n_rd_ptr, n_wr_ptr;
 
 logic n_o_empty, n_o_full;
+logic n_stall;
+
+logic [FIFO_DEPTH-1 : 0] n_occupied_space;
 
 logic rd_req, wr_req;
 
@@ -37,18 +44,20 @@ integer i;
 assign rd_req = rd_en && !o_empty;
 assign wr_req = wr_en && !o_full;
 
-always_ff @(posedge i_clk or negedge i_rst_n) begin: REQUEST_FIFO_STATUS
+always_ff @(posedge i_clk or negedge i_rst_n) begin: WRITE_DATA_FIFO_STATUS
     if(!i_rst_n) begin
         wr_ptr <= 0;
         rd_ptr <= 0;
         o_empty <= 1;
         o_full <= 0;
+        o_stall <= 0;
     end
     else begin
         wr_ptr <= n_wr_ptr;
         rd_ptr <= n_rd_ptr;
         o_empty <= n_o_empty;
         o_full <= n_o_full;
+        o_stall <= n_stall;
     end
 end
 
@@ -88,22 +97,35 @@ always_comb begin
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) begin: REQUEST_FIFO
-    if( !i_rst_n ) 
-    begin
+always_comb begin
+    n_occupied_space = n_wr_ptr - n_rd_ptr;
+end
+
+always_comb begin
+    if( n_occupied_space == (1 << STALL_WATERMARK) ) begin
+        n_stall = 1;
+    end
+    else begin
+        n_stall = 0;
+    end
+end
+
+
+always_ff @( posedge i_clk or negedge i_rst_n ) begin: WRITE_DATA_FIFO
+    if( !i_rst_n ) begin
         for( i = 0; i < (1 << FIFO_DEPTH); i = i + 1 ) begin
             mem[i] <= 0;
         end
     end 
     else begin
-        if( wr_req ) 
-        begin
+        if( wr_req ) begin
             mem[wr_ptr[FIFO_DEPTH-1:0]] <= i_data;
         end
     end
 end
 
 assign o_data = mem[rd_ptr[FIFO_DEPTH-1:0]];
+
 
   /*
   * ASSERTIONS Synchronous FIFO

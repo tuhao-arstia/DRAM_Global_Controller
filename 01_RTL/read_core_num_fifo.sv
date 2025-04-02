@@ -3,27 +3,27 @@
 
 import frontend_command_definition_pkg::*;
 
-module read_request_fifo
-                 #(parameter DATA_WIDTH = `BANK_ADDR_BITS + `ROW_ADDR_BITS + `COL_ADDR_BITS + 2,
-                   parameter FIFO_DEPTH = 4
-                   // 2^4 depth
-                 ) 
-                 (
-                 i_clk, i_rst_n, i_data,
-                 wr_en,
-                 rd_en, 
-                 o_data, o_full, o_empty
-                 );
+module read_core_num_fifo
+                        #(parameter DATA_WIDTH = 2,
+                          parameter FIFO_DEPTH = 4
+                          // 2^4 depth
+                        ) 
+                        (
+                        i_clk, i_rst_n, i_data,
+                        wr_en,
+                        rd_en, 
+                        o_data, o_full, o_empty,
+                        );
 
 input logic i_clk;
 input logic i_rst_n;
-input frontend_command_t i_data;
+input core_num_t i_data;
 input logic wr_en;
 input logic rd_en;
-output frontend_command_t o_data;
+output core_num_t o_data;
 output logic o_full, o_empty;
 
-frontend_command_t mem [0:(1 << FIFO_DEPTH)-1];
+core_num_t mem [0:(1 << FIFO_DEPTH)-1];
 
 logic [FIFO_DEPTH : 0] rd_ptr, wr_ptr;
 logic [FIFO_DEPTH : 0] n_rd_ptr, n_wr_ptr;
@@ -37,7 +37,7 @@ integer i;
 assign rd_req = rd_en && !o_empty;
 assign wr_req = wr_en && !o_full;
 
-always_ff @(posedge i_clk or negedge i_rst_n) begin: REQUEST_FIFO_STATUS
+always_ff @(posedge i_clk or negedge i_rst_n) begin: WRITE_DATA_FIFO_STATUS
     if(!i_rst_n) begin
         wr_ptr <= 0;
         rd_ptr <= 0;
@@ -88,22 +88,21 @@ always_comb begin
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) begin: REQUEST_FIFO
-    if( !i_rst_n ) 
-    begin
+always_ff @( posedge i_clk or negedge i_rst_n ) begin: WRITE_DATA_FIFO
+    if( !i_rst_n ) begin
         for( i = 0; i < (1 << FIFO_DEPTH); i = i + 1 ) begin
             mem[i] <= 0;
         end
     end 
     else begin
-        if( wr_req ) 
-        begin
+        if( wr_req ) begin
             mem[wr_ptr[FIFO_DEPTH-1:0]] <= i_data;
         end
     end
 end
 
 assign o_data = mem[rd_ptr[FIFO_DEPTH-1:0]];
+
 
   /*
   * ASSERTIONS Synchronous FIFO

@@ -3,7 +3,7 @@
 
 import frontend_command_definition_pkg::*;
 
-module request_fifo
+module write_request_fifo
                  #(parameter DATA_WIDTH = `BANK_ADDR_BITS + `ROW_ADDR_BITS + `COL_ADDR_BITS + 2,
                    parameter FIFO_DEPTH = 4,
                    // 2^4 depth
@@ -11,7 +11,8 @@ module request_fifo
                    // WATERMARK maximum is 2^FIFO_DEPTH - 1
                  ) 
                  (
-                 i_clk, i_rst_n, i_data, i_raw_flag,
+                 i_clk, i_rst_n, i_data,
+                 i_raw_flag,
                  wr_en,
                  rd_en, 
                  o_data, o_full, o_empty,
@@ -36,9 +37,6 @@ logic [FIFO_DEPTH : 0] n_rd_ptr, n_wr_ptr;
 logic n_o_empty, n_o_full;
 logic n_o_write_flush;
 
-logic [FIFO_DEPTH-1 : 0] write_flush_num;
-logic [FIFO_DEPTH-1 : 0] n_write_flush_num;
-
 logic [FIFO_DEPTH-1 : 0] n_occupied_space;
 
 logic rd_req, wr_req;
@@ -55,7 +53,6 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin: REQUEST_FIFO_STATUS
         o_empty <= 1;
         o_full <= 0;
         o_write_flush <= 0;
-        write_flush_num <= 0;
     end
     else begin
         wr_ptr <= n_wr_ptr;
@@ -63,7 +60,6 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin: REQUEST_FIFO_STATUS
         o_empty <= n_o_empty;
         o_full <= n_o_full;
         o_write_flush <= n_o_write_flush;
-        write_flush_num <= n_write_flush_num;
     end
 end
 
@@ -87,7 +83,7 @@ end
 
 always_comb begin
     if( o_write_flush )begin
-        if( !i_raw_flag && write_flush_num == 0 ) begin
+        if( o_empty ) begin
             n_o_write_flush = 0;
         end
         else begin
@@ -103,21 +99,6 @@ always_comb begin
         end
     end
 end
-
-// write flush number setting
-always_comb begin
-    if( i_raw_flag || n_occupied_space == FLUSH_WATERMARK ) begin
-        n_write_flush_num = n_occupied_space - rd_req;
-    end
-    else begin
-        if( rd_req ) begin
-            n_write_flush_num = write_flush_num - 1;
-        end
-        else begin
-            n_write_flush_num = write_flush_num;
-        end
-    end
-end 
 
 // occupied space setting
 always_comb begin

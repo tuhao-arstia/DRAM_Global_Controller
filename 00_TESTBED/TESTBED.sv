@@ -32,7 +32,7 @@ initial begin
 end
 
 // Instantiate the init_ddr_phy_dram module
-Globla_Controller I_Globla_Controller (
+Global_Controller I_Global_Controller (
     .i_clk(clk),
     .i_rst_n(rst_n),
 

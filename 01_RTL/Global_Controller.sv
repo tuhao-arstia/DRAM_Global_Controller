@@ -11,15 +11,17 @@
 `include "write_data_fifo.sv"
 `include "write_addr_fifo.sv"
 
-module Global_Controller(
+module Global_Controller#(
+                            parameter GLOBAL_CONTROLLER_WORD_SIZE = 1024
+)(
                           i_clk,
                           i_rst_n,
                           
                           // request channel
-                          o_controller_ready,
                           i_command_valid,
                           i_command,
                           i_write_data,
+                          o_controller_ready,
 
                           // read data channel
                           o_read_data_valid;
@@ -66,28 +68,55 @@ module Global_Controller(
 input logic i_clk;
 input logic i_rst_n;
 
-input logic i_interconnection_request_valid;
-input frontend_interconnection_request_t i_interconnection_request;
-input logic [`FRONTEND_WORD_SIZE-1:0] i_interconnection_write_data;
-output logic o_scheduler_ready;
+// request channel
+input logic i_command_valid;
+input frontend_command_t i_command;
+input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_write_data;
+output logic o_controller_ready;
 
-input logic i_backend_controller_ready;
-input logic i_backend_controller_wdata_rd_en;
-output logic o_frontend_command_valid;
-output frontend_command_t o_frontend_command;
-output logic [`BACKEND_WORD_SIZE-1:0] o_frontend_write_data;
-output logic o_stall_backend_controller;
+// read data channel
+output logic o_read_data_valid;
+output logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] o_read_data;
 
-output logic o_frontend_receive_ready;
-input logic i_returned_data_valid;
-input logic [`BACKEND_WORD_SIZE-1:0] i_returned_data;
+// command channel
+input logic i_backend_controller_ready_bc0;
+output logic o_frontend_command_valid_bc0;
+output frontend_command_t o_frontend_command_bc0;
+output logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] o_frontend_write_data_bc0;
 
-input logic i_interconnection_ready;
-output logic o_scheduler_request_valid;
-output logic [`FRONTEND_WORD_SIZE-1:0] o_scheduler_read_data;
-output req_id_t o_scheduler_request_id;
-output core_num_t o_scheduler_core_num;
+input logic i_backend_controller_ready_bc1;
+output logic o_frontend_command_valid_bc1;
+output frontend_command_t o_frontend_command_bc1;
+output logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] o_frontend_write_data_bc1;
 
+input logic i_backend_controller_ready_bc2;
+output logic o_frontend_command_valid_bc2;
+output frontend_command_t o_frontend_command_bc2;
+output logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] o_frontend_write_data_bc2;
+
+input logic i_backend_controller_ready_bc3;
+output logic o_frontend_command_valid_bc3;
+output frontend_command_t o_frontend_command_bc3;
+output logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] o_frontend_write_data_bc3;
+
+ // returned data channel
+output logic o_backend_controller_ren_bc0;
+input logic i_returned_data_valid_bc0;
+input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_returned_data_bc0;
+
+output logic o_backend_controller_ren_bc1;
+input logic i_returned_data_valid_bc1;
+input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_returned_data_bc1;
+
+output logic o_backend_controller_ren_bc2;
+input logic i_returned_data_valid_bc2;
+input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_returned_data_bc2;
+
+output logic o_backend_controller_ren_bc3;
+input logic i_returned_data_valid_bc3;
+input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_returned_data_bc3;
+
+// register/ wire/ integer declarations
 integer i;
 
 // transaction signals

@@ -1,1 +1,1 @@
-# DRAM_Frontend_Scheduler
+# DRAM_Global_Controller

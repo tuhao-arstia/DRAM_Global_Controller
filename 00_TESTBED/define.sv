@@ -1,7 +1,5 @@
-`ifndef DEFINE_SV
-`define DEFINE_SV
 //`define PATTERN_DISP_ON
-
+`define CLK_DEFINE 1 //1ns
 //command defination {cke,cs_n,ras_n,cas_n,we_n}
 `define  CMD_POWER_UP       5'b01111
 `define  CMD_LOAD_MODE      5'b10000
@@ -14,11 +12,13 @@
 `define  CMD_NOP            5'b10111
 `define  CMD_DESELECT       5'b11111
 `define  CMD_POWER_DOWN     5'b01111
-`define  CMD_SELF_REFLESH	  5'b00001
+`define  CMD_SELF_REFLESH	5'b00001
+`define  CMD_READA          5'b10101
+`define  CMD_WRITEA         5'b10100
 
 
 //command state naming
-`define FSM_WIDTH1      5
+`define FSM_WIDTH1      6
 `define FSM_POWER_UP    `FSM_WIDTH1'd0
 `define FSM_WAIT_TXPR   `FSM_WIDTH1'd1
 `define FSM_ZQ          `FSM_WIDTH1'd2
@@ -84,62 +84,34 @@
 /****************************************
 time paramemters
 *****************************************/
-//`define CLK_DEFINE 2000 //3000ps
-`define CLK_DEFINE 1 //3ns
-
 //define latency cycles
-`define CYCLE_TXPR 81       //tXPR = 81 cycles = 81*3 = 243ns, 
-`define CYCLE_TMRD 9        //tMRD = 4 cycles   (4-1) * 3 <- LMR0~LMR3 total waiting time
-`define CYCLE_TDLLK 512     //tDLLK = 512 cycles
-`define CYCLE_TRCD 4  //tRCD = 5 cycles, new timing 11000(ps) / 3000(ps) = 4
-`define CYCLE_TRC  8 //tRC = 17 cycles, new timing 23000(ps) / 3000(ps) = 8
-`define CYCLE_TCCD 4  //tCCD = 4 cycles, same
+`define POWER_UP_LATENCY 14 // for 3ns it is 42ns
+`define CYCLE_TXPR 243       // for 3ns it is 243ns
+`define CYCLE_TMRD 9  //tMRD = 4 cycles   (4-1) * 3 <- LMR0~LMR3 total waiting time, which is 9 cycles = 36(ns)
+`define CYCLE_TDLLK 512 //tDLLK = 512 cycles, 3ns * 512 = 1536ns
+`define CYCLE_TRCD 11  //tRCD = 5 cycles, new timing 11000(ps) / 3000(ps) = 4, tRCD 5 cycles = 15ns 
+`define CYCLE_TRC  23 //tRC = 17 cycles, new timing 23000(ps) / 3000(ps) = 8, tRC 23 cycles = 69ns
+`define CYCLE_TCCD 3  //tCCD = 3 cycles
 `define CYCLE_TCL  5  //tCL = CAS Latency, new timing is 14000/3000 = 5
 `define CYCLE_TCWL 5  //tCWL = CAS write Latency
-`define CYCLE_TWR  5  //tWR = Write Recovery
+`define CYCLE_TWR  9  //tWR = Write Recovery
 `define CYCLE_TAL  0  //tAL = Additional Latency  set AL = CL-2  CYCLE_TAL = AL - 1
 `define CYCLE_TRRD 4  //tRRD = Active BANK A to Active BANK B min. latency round((7500ps/3000ps))=3
 `define CYCLE_TFAW 15 //tFAW = Four Bank Active window (45000ps/3000ps)=15
-`define CYCLE_TRTP 4  //tRTP = Read to precharge command delay round((7500ps/3000ps))=3
-`define CYCLE_TRP  3  //tRP = precharge period round((13500ps/3000ps))=5, new timing is 7000/3000 = 3
-`define CYCLE_TRAS 12 //tRAS = active-to-precharge the same bank latency.  round(36000ps/3000ps)=12
+`define CYCLE_TRTP 8  //tRTP = Read to precharge command delay round((7500ps/3000ps))=3
+`define CYCLE_TRP  7  //tRP = precharge period round((13500ps/3000ps))=5, new timing is 7000/3000 = 3
+`define CYCLE_TRAS 17 //tRAS = active-to-precharge the same bank latency.  round(36000ps/3000ps)=12
 `define CYCLE_TOTAL_WL 5   //CWL + AL
 `define CYCLE_TOTAL_RL 5   //CL + AL
 
 `define CYCEL_ODT_OFF 5+0-2  //CWL + AL - 2
 `define CYCEL_ODT_ON  5+0-2  //CWL + AL - 2
 
-`define CYCLE_TWTR  4 //write to read command latency : round((7500ps/3000ps))=3
+`define CYCLE_TWTR  8 //write to read command latency : round((7500ps/3000ps))=3
 `define CYCLE_TRTW  `CYCLE_TOTAL_RL+`CYCLE_TCCD+2-(`CYCLE_TOTAL_WL)
                      //read to write command latency : RL + tCCD + 2*tCK - WL
-
-/*
-//define latency cycles
-`define CYCLE_TXPR 81
-`define CYCLE_TMRD 9  //tMRD = 4 cycles   (4-1) * 3 <- LMR0~LMR3 total waiting time
-`define CYCLE_TDLLK 512
-`define CYCLE_TRCD 9  //tRCD = 9 cycles
-`define CYCLE_TRC  33 //tRC = 33 cycles
-`define CYCLE_TCCD 4  //tCCD = 4 cycles
-`define CYCLE_TCL  9  //tCL = CAS Latency
-`define CYCLE_TCWL 7  //tCWL = CAS write Latency
-`define CYCLE_TWR  10  //tWR = Write Recovery
-`define CYCLE_TAL  0  //tAL = Additional Latency  set AL = CL-2  CYCLE_TAL = AL - 1
-`define CYCLE_TRRD 4  //tRRD = Active BANK A to Active BANK B min. latency (6000ps/1500ps)=4
-`define CYCLE_TFAW 20 //tFAW = Four Bank Active window (30000ps/1500ps)=20
-`define CYCLE_TRTP 5  //tRTP = Read to precharge command delay (7500ps/1500ps)=5
-`define CYCLE_TRP  9  //tRP = precharge period (13500ps/1500ps)=9
-`define CYCLE_TRAS 24 //tRAS = active-to-precharge the same bank latency.  round(35000ps/1500ps)=24
-`define CYCLE_TOTAL_WL 7   //CWL + AL
-`define CYCLE_TOTAL_RL 9   //CL + AL
-
-`define CYCEL_ODT_OFF 7+0-2  //CWL + AL - 2
-`define CYCEL_ODT_ON  7+0-2  //CWL + AL - 2
-
-`define CYCLE_TWTR  5 //write to read command latency : (7500ps/1500ps)=5
-`define CYCLE_TRTW  `CYCLE_TOTAL_RL+`CYCLE_TCCD+2-(`CYCLE_TOTAL_WL)
-                     //read to write command latency : RL + tCCD + 2*tCK - WL
-*/
+`define CYCLE_TO_REFRESH 110 // For our case it is 110 cycles
+`define CYCLE_REFRESH_PERIOD 3900 // For our case it is 3900 cycles
 
 
 /****************************************
@@ -189,20 +161,22 @@ time paramemters
 `define MR3_CONFIG 0     // set by default
 //------------------------------------------------------------
 
+
 /*******************************************************
 bit width definations
 ********************************************************/
 `define DM_BITS    2
 `define BA_BITS    3
-
-`define ROW_ADDR_BITS 16
-`define COL_ADDR_BITS 4
-`define BANK_ADDR_BITS 2
-
 `define DQ_BITS    128
 `define DQS_BITS   2
-`define FRONTEND_WORD_SIZE  256
-`define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
+`define ROW_BITS   16
+`define COL_BITS   4
+`define ADDR_BITS  `COL_BITS+`ROW_BITS
+
+
+`define USER_COMMAND_BITS 31
+`define MEM_CTR_COMMAND_BITS 29
+`define FRONTEND_CMD_BITS 1+1+`ROW_BITS+`COL_BITS
 
 // Schedule command defination, the physical IO FSM controlled by current bank state and counters
 `define ATCMD_NOP        4'd0
@@ -222,12 +196,12 @@ bit width definations
 `define ISSUE_BUF_PTR_SIZE 4
 `define ISSUE_BUF_SIZE 8
 
-`define ISU_FIFO_WIDTH 21 //{command , addr , bank}
+`define ISU_FIFO_WIDTH 4+`ADDR_BITS+`BA_BITS //{command , addr , bank}
                            //[20:17]   [16:3] [2:0]
 
 `define OUT_FIFO_WIDTH  2 //{read/write,Burst_Length} ;
 
-`define WDATA_FIFO_WIDTH 1025//{wdata,burst_length}
+`define WDATA_FIFO_WIDTH `DQ_BITS*8//{wdata,burst_length}
 //------------------------------
 //for bank FSM process
 //------------------------------
@@ -241,6 +215,4 @@ bit width definations
 //for cmd_scheduler
 //------------------------------
 `define BA_PROC_CMD_WIDTH 3
-`define BA_INFO_WIDTH 22//`FSM_WIDTH2+14+3 //{ba_state,addr,process_cmd}
-
-`endif
+`define BA_INFO_WIDTH `FSM_WIDTH2+`ADDR_BITS+3//`FSM_WIDTH2+14+3 //{ba_state,addr,process_cmd}

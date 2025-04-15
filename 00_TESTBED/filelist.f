@@ -1,1 +1,1 @@
-../00_TESTBED/TESTBED.sv
+TESTBED.sv

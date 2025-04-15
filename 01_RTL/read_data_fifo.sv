@@ -1,13 +1,14 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
+// `include "../00_TESTBED/define.sv"
 
-import frontend_command_definition_pkg::*;
+// import frontend_command_definition_pkg::*;
 
 module read_data_fifo
                         #(parameter DATA_WIDTH = `BACKEND_WORD_SIZE,
                           parameter FIFO_DEPTH = 4,
                           // 2^4 depth
-                          parameter STALL_WATERMARK = 3,
+                          parameter STALL_WATERMARK = 3
                           // 2^3
                         ) 
                         (

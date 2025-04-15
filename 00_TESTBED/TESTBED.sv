@@ -1,8 +1,10 @@
 `timescale 1ns / 10ps
 `include "userType_pkg.sv"
-`include "PATTERN.sv"
+// `include "PATTERN.sv"
 `include "define.sv"
 
+`define FRONTEND_WORD_SIZE  256
+`define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
 
 `ifdef RTL
     `include "frontend_scheduler.sv"
@@ -13,7 +15,6 @@
 
 module TESTBED;
 
-import usertype::*;
 import frontend_command_definition_pkg::*;
 
 logic clk;

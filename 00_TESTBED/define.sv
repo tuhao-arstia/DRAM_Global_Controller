@@ -1,3 +1,5 @@
+`ifndef DEFINE_SV
+`define DEFINE_SV
 //`define PATTERN_DISP_ON
 
 //command defination {cke,cs_n,ras_n,cas_n,we_n}
@@ -240,3 +242,5 @@ bit width definations
 //------------------------------
 `define BA_PROC_CMD_WIDTH 3
 `define BA_INFO_WIDTH 22//`FSM_WIDTH2+14+3 //{ba_state,addr,process_cmd}
+
+`endif

@@ -1,7 +1,7 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
 
-import frontend_command_definition_pkg::*;
+// import frontend_command_definition_pkg::*;
 
 module write_request_fifo
                  #(parameter DATA_WIDTH = `BANK_ADDR_BITS + `ROW_ADDR_BITS + `COL_ADDR_BITS + 2,

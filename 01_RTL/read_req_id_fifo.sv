@@ -1,7 +1,8 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
+// `include "../00_TESTBED/define.sv"
 
-import frontend_command_definition_pkg::*;
+// import frontend_command_definition_pkg::*;
 
 module read_req_id_fifo
                         #(parameter DATA_WIDTH = 5,
@@ -12,7 +13,7 @@ module read_req_id_fifo
                         i_clk, i_rst_n, i_data,
                         wr_en,
                         rd_en, 
-                        o_data, o_full, o_empty,
+                        o_data, o_full, o_empty
                         );
 
 input logic i_clk;

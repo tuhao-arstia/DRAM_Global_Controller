@@ -1,7 +1,10 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
+// `include "../00_TESTBED/define.sv"
 
-import frontend_command_definition_pkg::*;
+// import frontend_command_definition_pkg::*;
+// `define FRONTEND_WORD_SIZE  256
+// `define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
 
 module write_data_fifo
                         #(parameter DATA_WIDTH = `BACKEND_WORD_SIZE,

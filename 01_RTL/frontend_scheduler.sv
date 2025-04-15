@@ -6,8 +6,13 @@
 // Description : schedule issued commands
 ////////////////////////////////////////////////////////////////////////
 
-`include "userType_pkg.sv"
+// `define FRONTEND_WORD_SIZE  256
+// `define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
+
+// `include "userType_pkg.sv"
 `include "define.sv"
+// `include "../00_TESTBED/define.sv"
+// import frontend_command_definition_pkg::*;
 `include "read_request_fifo.sv"
 `include "read_req_id_fifo.sv"
 `include "read_core_num_fifo.sv"
@@ -15,9 +20,6 @@
 `include "write_request_fifo.sv"
 `include "write_data_fifo.sv"
 `include "write_addr_fifo.sv"
-
-import usertype::*;
-import frontend_command_definition_pkg::*;
 
 module frontend_scheduler(
                           i_clk,
@@ -30,6 +32,7 @@ module frontend_scheduler(
                           i_interconnection_write_data_last,
                           // frontend scheduler to backend controller
                           i_backend_controller_ready,
+                          i_backend_controller_wdata_rd_en,
                           o_frontend_command_valid,
                           o_frontend_command,
                           o_frontend_write_data,
@@ -44,7 +47,7 @@ module frontend_scheduler(
                           o_scheduler_read_data,
                           o_scheduler_read_data_last,
                           o_scheduler_request_id,
-                          o_scheduler_core_num, 
+                          o_scheduler_core_num
 );
 
 input logic i_clk;
@@ -57,6 +60,7 @@ input logic i_interconnection_write_data_last;
 output logic o_scheduler_ready;
 
 input logic i_backend_controller_ready;
+input logic i_backend_controller_wdata_rd_en;
 output logic o_frontend_command_valid;
 output frontend_command_t o_frontend_command;
 output logic [`BACKEND_WORD_SIZE-1:0] o_frontend_write_data;
@@ -72,6 +76,8 @@ output logic [`FRONTEND_WORD_SIZE-1:0] o_scheduler_read_data;
 output logic o_scheduler_read_data_last;
 output req_id_t o_scheduler_request_id;
 output core_num_t o_scheduler_core_num;
+
+integer i;
 
 // transaction signals
 // handshake signals
@@ -208,7 +214,7 @@ read_request_fifo #(.DATA_WIDTH(`BANK_ADDR_BITS+`ROW_ADDR_BITS+`COL_ADDR_BITS+2)
     .rd_en(read_request_rd_en),
     .o_data(read_request_candidate),
     .o_full(read_request_fifo_full),
-    .o_empty(read_request_fifo_empty),
+    .o_empty(read_request_fifo_empty)
 );
 
 assign read_request_wr_en = (interconnection_request.command.op_type == 1'b1);
@@ -256,7 +262,7 @@ always_comb
 begin : WRITE_REQUEST_FIFO_RD_EN
     if(i_backend_controller_ready)
     begin
-        if(read_request_empty || write_flush)
+        if(read_request_fifo_empty || write_flush)
         begin
             // in write flush mode: keep reading write request fifo until empty
             write_request_rd_en = 1;
@@ -282,7 +288,7 @@ write_data_fifo #(.DATA_WIDTH(`BACKEND_WORD_SIZE), .FIFO_DEPTH(4)) write_data_fi
     .rd_en(write_request_rd_en),
     .o_data(write_data_fifo_out),
     .o_full(write_data_fifo_full),
-    .o_empty(write_data_fifo_empty),
+    .o_empty(write_data_fifo_empty)
 );
 
 assign write_data_fifo_in = {interconnection_write_data[3], interconnection_write_data[2], interconnection_write_data[1], interconnection_write_data[0]};
@@ -400,7 +406,7 @@ begin : O_FRONTEND_COMMAND_VALID
     end
     else if(i_backend_controller_ready)
     begin
-        if(!read_request_empty || !write_request_empty)
+        if(!read_request_fifo_empty || !write_request_fifo_empty)
         begin
             o_frontend_command_valid <= 1;
         end
@@ -420,7 +426,7 @@ begin : O_FRONTEND_COMMAND
     begin
         o_frontend_command <= 0;
     end
-    else if((write_flush && !write_request_empty) || read_request_empty)
+    else if((write_flush && !write_request_fifo_empty) || read_request_fifo_empty)
     begin
         o_frontend_command <= write_request_candidate;
     end

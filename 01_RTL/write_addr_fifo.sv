@@ -1,7 +1,8 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
+// `include "../00_TESTBED/define.sv"
 
-import frontend_command_definition_pkg::*;
+// import frontend_command_definition_pkg::*;
 
 module write_addr_fifo
                         #(parameter DATA_WIDTH = `ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS,
@@ -9,11 +10,12 @@ module write_addr_fifo
                           // 2^4 depth
                         ) 
                         (
-                        i_clk, i_rst_n, i_data
+                        i_clk, i_rst_n, i_data,
                         wr_en, rd_en, 
                         o_addr_0, o_addr_1, o_addr_2, o_addr_3, o_addr_4, o_addr_5, o_addr_6, o_addr_7,
                         o_full, o_empty
                         );
+
 input logic i_clk;
 input logic i_rst_n;
 // i_data = {bank_addr, row_addr, col_addr}
@@ -107,14 +109,14 @@ always_ff @( posedge i_clk or negedge i_rst_n ) begin: WRITE_ADDR_FIFO
 end
 
 // o_addr_0 is the oldest data
-assign o_ptr = wd_ptr[FIFO_DEPTH-1:0];
-assign o_ptr_0 = o_ptr - 4'd7
-assign o_ptr_1 = o_ptr - 4'd6
-assign o_ptr_2 = o_ptr - 4'd5
-assign o_ptr_3 = o_ptr - 4'd4
-assign o_ptr_4 = o_ptr - 4'd3
-assign o_ptr_5 = o_ptr - 4'd2
-assign o_ptr_6 = o_ptr - 4'd1
+assign o_ptr = wr_ptr[FIFO_DEPTH-1:0];
+assign o_ptr_0 = o_ptr - 4'd7;
+assign o_ptr_1 = o_ptr - 4'd6;
+assign o_ptr_2 = o_ptr - 4'd5;
+assign o_ptr_3 = o_ptr - 4'd4;
+assign o_ptr_4 = o_ptr - 4'd3;
+assign o_ptr_5 = o_ptr - 4'd2;
+assign o_ptr_6 = o_ptr - 4'd1;
 assign o_ptr_7 = o_ptr;
 
 assign o_addr_0 = mem[o_ptr_0];

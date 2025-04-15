@@ -1,5 +1,22 @@
-`include "define.sv"
-`include "userType_pkg.sv"
+// `include "define.sv"
+// `include "userType_pkg.sv"
+// import frontend_command_definition_pkg::*;
+`define FRONTEND_WORD_SIZE  256
+`define BACKEND_WORD_SIZE   FRONTEND_WORD_SIZE*4
+
+`ifdef RTL
+    `define CYCLE_TIME 3
+`endif
+`ifdef GATE
+    `define CYCLE_TIME 3
+`endif
+
+
+`define TOTAL_CMD 500
+
+`define TOTAL_SIM_CYCLE 50000
+
+`define PATTERN_NUM 500
 
 module PATTERN(
     i_clk,
@@ -29,10 +46,8 @@ module PATTERN(
     o_scheduler_core_num
 );
 
-import frontend_command_definition_pkg::*;
-
-output logic clk1;
-output logic rst_n;
+output logic i_clk;
+output logic i_rst_n;
 
 input logic o_scheduler_ready;
 output logic i_interconnection_request_valid;
@@ -58,92 +73,68 @@ input req_id_t o_scheduler_request_id;
 input core_num_t o_scheduler_core_num;
 
 // integer declaration
+real CYCLE = `CYCLE_TIME;
+integer write_command_count;
+integer read_command_count;
+integer issued_write_command_count;
+integer issued_read_command_count;
+integer RAW_count;
 
-initial exe_task;
+// integer total_latency;
+// integer latency;
 
-// initial force_exiting_task;
-//======================================
-//              MAIN
-//======================================
-task exe_task;
-    reset_task();
-    wait_initialization();
-    send_command();
-    congratulation();
-endtask
+integer i, j;
+integer i_pat;
 
-//======================================
-//              TASKS
-//======================================
-task clock_cycle_cnt_task;
-    forever begin
-        clock_cycle = clock_cycle + 1;
-        @(negedge clk1);
+// clock setting
+always #(`CLK_DEFINE/2.0) i_clk = ~i_clk ;
+
+// initial block
+initial
+begin
+    reset_task;
+
+    write_command_count = 0;
+    read_command_count = 0;
+    issued_write_command_count = 0;
+    issued_read_command_count = 0;
+    RAW_count = 0;
+
+    for(i_pat = 0; i_pat < `PATTERN_NUM; i_pat = i_pat + 1)
+    begin
+        input_task;
     end
-endtask
 
+    congratulation;
+end
 
-task force_exiting_task;
-    forever begin
-        // if(clock_cycle > SIM_CLK_CYCLE)
-            // $finish;
-        @(negedge clk1);
-    end
-endtask
-
+// tasks
 task reset_task;
-    // reseting the ddr3
-    // display
-    $display("======================================");
-    $display("====       Resetting the DDR3      ===");
-    $display("======================================");
-    rst_n = 0;
-    clk1 = 0;
-    clk2 = 0;
-
-    #(`CLK_DEFINE*10) rst_n = 0;
-    #(`CLK_DEFINE*10) rst_n = 1;
-    $display("======================================");
-    $display("====       Done Reset the DDR3     ===");
-    $display("======================================");
-
+    i_rst_n = 1'b1;
+    force i_clk = 0;
+    #CYCLE; i_rst_n = 1'b0;
+    #CYCLE; i_rst_n = 1'b1;
+    #(100);
+    release i_clk;
 endtask
 
-task wait_initialization;
-    // waiting for the initialization to be done
-    $display("======================================");
-    $display("====     WAITING INITIALIZATION    ===");
-    $display("======================================");
-    forever begin
-        if(init_done_flag == 1'b1) // MEANING the initialization is done
-            break;
-        @(negedge clk1);
+always_ff @( posedge i_clk or negedge i_rst_n ) 
+begin : I_INTERCONNECTION_REQUEST_VALID
+    if(!i_rst_n) begin
+        i_interconnection_request_valid <= 1'b0;
+    end else begin
+        if (o_scheduler_ready) begin
+            i_interconnection_request_valid <= 1'b1;
+        end else begin
+            i_interconnection_request_valid <= 1'b0;
+        end
     end
-    $display("=======================================");
-    $display("====     DONE INITILIZATION         ===");
-    $display("=======================================");
+end
+
+task input_task;
+    // @(negedge clk);
 endtask
 
-task gen_clk;
-    forever begin
-        #(`CLK_DEFINE/2.0) clk1 = ~clk1;
-    end
-endtask
-
-task gen_clk2;
-    forever begin
-        #(`CLK_DEFINE/4.0) clk2 = ~clk2;
-    end
-endtask
-
-task send_command;
-    // sending the command
-    $display("======================================");
-    $display("====     SENDING COMMANDS          ===");
-    $display("======================================");
-    // sending the command
-    @(negedge clk1);
-endtask
 
 task congratulation;
     $display("Congratulations! All tests passed");

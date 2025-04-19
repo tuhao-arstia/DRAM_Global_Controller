@@ -1,12 +1,12 @@
 `timescale 1ns / 10ps
-`include "userType_pkg.sv"
+`include "frontend_cmd_definition_pkg.sv"
 `include "PATTERN.sv"
 
 `ifdef RTL
-    `include "Globla_Controller.sv"
+    `include "Global_Controller.sv"
 `endif
 `ifdef GATE
-    `include "Globla_Controller_SYN.sv"
+    `include "Global_Controller_SYN.sv"
 `endif
 
 module TESTBED;

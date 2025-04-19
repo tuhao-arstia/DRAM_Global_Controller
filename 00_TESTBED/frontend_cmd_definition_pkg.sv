@@ -1,17 +1,17 @@
-`ifndef USER_TYPE_PKG_SV
-`define USER_TYPE_PKG_SV
+`ifndef FRONTEND_CMD_DEFINITION_PKG_SV
+`define FRONTEND_CMD_DEFINITION_PKG_SV
 
 `include "define.sv"
-
 package frontend_command_definition_pkg;
     typedef enum logic{
         OP_READ = 1'b1,
         OP_WRITE = 1'b0
     } request_op_type_t;
 
-    typedef enum logic{
-        DATA_TYPE_WEIGHTS = 1'b0,
-        DATA_TYPE_KV$ = 1'b1
+    typedef enum logic [1:0]{
+        DATA_TYPE_WEIGHTS = 2'b00,
+        DATA_TYPE_KV$ = 2'b01,
+        DATA_TYPE_INSTRUCTION = 2'b10
     } request_data_type_t;
     
     // command definition
@@ -20,7 +20,15 @@ package frontend_command_definition_pkg;
         request_data_type_t data_type;
         logic[`ROW_BITS-1:0] row_addr;
         logic[`COL_BITS-1:0] col_addr;
+        logic[`BANK_BITS-1:0] bank_addr;
     } frontend_command_t;
+
+   typedef struct packed {
+       request_op_type_t op_type;
+       request_data_type_t data_type;
+       logic[`ROW_BITS-1:0] row_addr;
+       logic[`COL_BITS-1:0] col_addr;
+   } backend_command_t;
 
     typedef logic[4:0] req_id_t;
     typedef logic[1:0] core_num_t; 
@@ -63,8 +71,8 @@ package command_definition_pkg;
 
     //burst length
     typedef enum logic	{
-	BL_4 = 0,
-	BL_8 = 1
+	    BL_4 = 0,
+	    BL_8 = 1
     } burst_legnth_t;
     
     // command_scheduler command type
@@ -77,7 +85,4 @@ package command_definition_pkg;
     } bank_command_t;
 endpackage
 
-import frontend_command_definition_pkg::*;
-import command_definition_pkg::*;
-
-`endif // USER_TYPE_PKG_SV
+`endif

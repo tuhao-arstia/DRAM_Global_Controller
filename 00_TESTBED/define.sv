@@ -171,12 +171,15 @@ bit width definations
 `define DQS_BITS   2
 `define ROW_BITS   16
 `define COL_BITS   4
+`define BANK_BITS  2
 `define ADDR_BITS  `COL_BITS+`ROW_BITS
 
+`define OP_BITS   1
+`define DATA_TYPE_BITS  2
 
 `define USER_COMMAND_BITS 31
 `define MEM_CTR_COMMAND_BITS 29
-`define FRONTEND_CMD_BITS 1+1+`ROW_BITS+`COL_BITS
+`define FRONTEND_CMD_BITS 1+2+`ROW_BITS+`COL_BITS
 
 // Schedule command defination, the physical IO FSM controlled by current bank state and counters
 `define ATCMD_NOP        4'd0

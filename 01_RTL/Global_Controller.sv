@@ -8,9 +8,7 @@
 `include "write_addr_fifo.sv"
 `include "write_request_fifo.sv"
 
-module Global_Controller#(
-                            parameter GLOBAL_CONTROLLER_WORD_SIZE = 1024
-)(
+module Global_Controller(
                           i_clk,
                           i_rst_n,
                           
@@ -21,7 +19,7 @@ module Global_Controller#(
                           o_controller_ready,
 
                           // read data channel
-                          o_read_data_valid;
+                          o_read_data_valid,
                           o_read_data,
 
                           // command channel

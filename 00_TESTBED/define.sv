@@ -190,6 +190,8 @@ bit width definations
 `define MEM_CTR_COMMAND_BITS 29
 `define FRONTEND_CMD_BITS 1+2+`ROW_BITS+`COL_BITS
 
+`define GLOBAL_CONTROLLER_WORD_SIZE 1024
+
 // Schedule command defination, the physical IO FSM controlled by current bank state and counters
 `define ATCMD_NOP        4'd0
 `define ATCMD_READ       4'd1

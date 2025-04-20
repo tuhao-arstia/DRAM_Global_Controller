@@ -5,7 +5,7 @@
 // import frontend_command_definition_pkg::*;
 
 module write_addr_fifo
-                        #(parameter DATA_WIDTH = `ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS,
+                        #(parameter DATA_WIDTH = `ROW_BITS+`COL_BITS+`BANK_BITS,
                           parameter FIFO_DEPTH = 4
                           // 2^4 depth
                         ) 

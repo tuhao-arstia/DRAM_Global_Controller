@@ -7,7 +7,6 @@
 
 `define TOTAL_CMD 500
 
-`define TOTAL_SIM_CYCLE 50000
 
 `define PATTERN_NUM 500
 
@@ -29,11 +28,11 @@ output logic i_rst_n;
 
 // integer declaration
 real CYCLE = `CYCLE_TIME;
-integer write_command_count;
-integer read_command_count;
-integer issued_write_command_count;
-integer issued_read_command_count;
-integer RAW_count;
+// integer write_command_count;
+// integer read_command_count;
+// integer issued_write_command_count;
+// integer issued_read_command_count;
+// integer RAW_count;
 
 // integer total_latency;
 // integer latency;

@@ -51,9 +51,9 @@ write_request_fifo (
     .data_out(data_out)
 );
 
-always_ff @(posedge i_clk or negedge i_rst_n) 
+always_ff @(posedge clk or negedge rst_n) 
 begin: WRITE_FLUSH_FLAG
-    if(!i_rst_n) begin
+    if(!rst_n) begin
         write_flush_flag <= 0;
     end
     else begin

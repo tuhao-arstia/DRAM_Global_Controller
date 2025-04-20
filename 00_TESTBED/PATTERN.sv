@@ -5,7 +5,7 @@
     `define CYCLE_TIME 1
 `endif
 
-`define TOTAL_CMD 500//?
+`define TOTAL_CMD 500
 
 `define TOTAL_SIM_CYCLE 50000
 

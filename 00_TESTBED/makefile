@@ -32,6 +32,7 @@ MEM_DEFINE=+define+p2+FSDB +define+x16 +define+sg15E +define+MAX_MEM -error=noMP
 # =====================================
 # ============== VCS ==================
 # =====================================
+export FSDB_MAX_VAR_ELEM = 99999990
 VCS_RTL_SIM = vcs ${TIMESCALE} \
     -j${num_CPU_cores} \
     -sverilog \

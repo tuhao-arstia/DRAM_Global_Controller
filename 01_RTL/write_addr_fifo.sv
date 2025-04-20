@@ -109,6 +109,7 @@ always_ff @( posedge i_clk or negedge i_rst_n ) begin: WRITE_ADDR_FIFO
 end
 
 // o_addr_0 is the oldest data
+// o_addr_7 is the latest data
 assign o_ptr = wr_ptr[FIFO_DEPTH-1:0];
 assign o_ptr_0 = o_ptr - 4'd7;
 assign o_ptr_1 = o_ptr - 4'd6;

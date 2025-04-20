@@ -8,6 +8,8 @@
 `include "write_addr_fifo.sv"
 `include "write_request_fifo.sv"
 
+`define GLOBAL_CONTROLLER_WORD_SIZE 1024
+
 module Global_Controller(
                           i_clk,
                           i_rst_n,
@@ -188,7 +190,7 @@ logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data;
 //---------------------------------------//
 //            Request Channel            //
 //---------------------------------------//
-assign hs_request_channel = i_interconnection_request_valid && o_scheduler_ready;
+assign hs_request_channel = i_command_valid && o_controller_ready;
 
 always_ff @(posedge i_clk or negedge i_rst_n) 
 begin: I_COMMAND
@@ -278,7 +280,7 @@ write_request_fifo write_request_fifo (
     .raw_flag(raw_flag),
     .empty(write_request_fifo_empty),
     .full(write_request_fifo_full),
-    .error(read_request_fifo_error),
+    .error(write_request_fifo_error),
     .data_out(write_request_candidate),
     .write_flush_flag(write_flush)
 );
@@ -388,7 +390,7 @@ write_data_fifo (
 
 // scheduled write data fifo
 DW_fifo_s1_sf #(write_data_width, fifo_depth, ae_level, af_level, err_mode, rst_mode)
-write_data_fifo (
+scheduled_write_data_fifo (
     .clk(i_clk),
     .rst_n(i_rst_n),
     .push_req_n(~scheduled_write_data_wr_en),
@@ -438,7 +440,7 @@ begin : SCHEDULED_WRITE_DATA_FIFO_RD_EN
 end
 
 // write address fifo
-write_addr_fifo #(.DATA_WIDTH(`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS), .FIFO_DEPTH(4)) 
+write_addr_fifo #(.DATA_WIDTH(`ROW_BITS+`COL_BITS+`BANK_BITS), .FIFO_DEPTH(4)) 
 write_addr_fifo (
     .i_clk(i_clk),
     .i_rst_n(i_rst_n),
@@ -465,8 +467,8 @@ always_comb
 begin: RAW_INFO_DECODE
     for(i = 0; i < 8; i = i + 1)
     begin
-       raw_addr[i] = raw_info[i][`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS-1:0];
-       raw_valid[i] = raw_info[i][`ROW_ADDR_BITS+`COL_ADDR_BITS+`BANK_ADDR_BITS]; 
+       raw_addr[i] = raw_info[i][`ROW_BITS+`COL_BITS+`BANK_BITS-1:0];
+       raw_valid[i] = raw_info[i][`ROW_BITS+`COL_BITS+`BANK_BITS]; 
     end
 end
 
@@ -616,23 +618,23 @@ always_ff @( posedge i_clk or negedge i_rst_n )
 begin : O_FRONTEND_COMMAND
     if(!i_rst_n) 
     begin
-        o_frontend_command_bc0.op_type <= 0;
-        o_frontend_command_bc0.data_type <= 0;
+        o_frontend_command_bc0.op_type <= OP_READ;
+        o_frontend_command_bc0.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc0.row_addr <= 0;
         o_frontend_command_bc0.col_addr <= 0;
 
-        o_frontend_command_bc1.op_type <= 0;
-        o_frontend_command_bc1.data_type <= 0;
+        o_frontend_command_bc1.op_type <= OP_READ;
+        o_frontend_command_bc1.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc1.row_addr <= 0;
         o_frontend_command_bc1.col_addr <= 0;
 
-        o_frontend_command_bc2.op_type <= 0;
-        o_frontend_command_bc2.data_type <= 0;
+        o_frontend_command_bc2.op_type <= OP_READ;
+        o_frontend_command_bc2.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc2.row_addr <= 0;
         o_frontend_command_bc2.col_addr <= 0;
 
-        o_frontend_command_bc3.op_type <= 0;
-        o_frontend_command_bc3.data_type <= 0;
+        o_frontend_command_bc3.op_type <= OP_READ;
+        o_frontend_command_bc3.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc3.row_addr <= 0;
         o_frontend_command_bc3.col_addr <= 0;
     end

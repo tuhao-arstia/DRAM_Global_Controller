@@ -85,4 +85,7 @@ package command_definition_pkg;
     } bank_command_t;
 endpackage
 
+import frontend_command_definition_pkg::*;
+import command_definition_pkg::*;
+
 `endif

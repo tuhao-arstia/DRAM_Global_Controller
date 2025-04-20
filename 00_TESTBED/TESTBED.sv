@@ -32,10 +32,10 @@ logic frontend_command_valid_bc1;
 logic frontend_command_valid_bc2;
 logic frontend_command_valid_bc3;
 
-frontend_command_t frontend_command_bc0;
-frontend_command_t frontend_command_bc1;
-frontend_command_t frontend_command_bc2;
-frontend_command_t frontend_command_bc3;
+backend_command_t frontend_command_bc0;
+backend_command_t frontend_command_bc1;
+backend_command_t frontend_command_bc2;
+backend_command_t frontend_command_bc3;
 
 logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc0;
 logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc1;
@@ -104,33 +104,70 @@ Global_Controller I_Global_Controller (
     .o_frontend_write_data_bc2(frontend_write_data_bc2),
     .o_frontend_write_data_bc3(frontend_write_data_bc3),
 
-    .i_backend_controller_ren_bc0(backend_controller_ren_bc0),
-    .i_backend_controller_ren_bc1(backend_controller_ren_bc1),
-    .i_backend_controller_ren_bc2(backend_controller_ren_bc2),
-    .i_backend_controller_ren_bc3(backend_controller_ren_bc3),
+    .o_backend_controller_ren_bc0(backend_controller_ren_bc0),
+    .o_backend_controller_ren_bc1(backend_controller_ren_bc1),
+    .o_backend_controller_ren_bc2(backend_controller_ren_bc2),
+    .o_backend_controller_ren_bc3(backend_controller_ren_bc3),
 
-    .o_returned_data_valid_bc0(returned_data_valid_bc0),
-    .o_returned_data_valid_bc1(returned_data_valid_bc1),
-    .o_returned_data_valid_bc2(returned_data_valid_bc2),
-    .o_returned_data_valid_bc3(returned_data_valid_bc3),
+    .i_returned_data_valid_bc0(returned_data_valid_bc0),
+    .i_returned_data_valid_bc1(returned_data_valid_bc1),
+    .i_returned_data_valid_bc2(returned_data_valid_bc2),
+    .i_returned_data_valid_bc3(returned_data_valid_bc3),
 
-    .o_returned_data_bc0(returned_data_bc0),
-    .o_returned_data_bc1(returned_data_bc1),
-    .o_returned_data_bc2(returned_data_bc2),
-    .o_returned_data_bc3(returned_data_bc3)
+    .i_returned_data_bc0(returned_data_bc0),
+    .i_returned_data_bc1(returned_data_bc1),
+    .i_returned_data_bc2(returned_data_bc2),
+    .i_returned_data_bc3(returned_data_bc3)
 );
 
 // connect it with the pattern
-// PATTERN I_PATTERN (
-    // .i_clk(clk),
-    // .i_rst_n(rst_n),
-// 
-    // .i_command_valid(core_command_valid),
-    // .i_command(core_command),
-// 
-// 
-// 
-// );
+PATTERN I_PATTERN (
+    .i_clk(clk),
+    .i_rst_n(rst_n),
+
+    .i_command_valid(core_command_valid),
+    .i_command(core_command),
+    .i_write_data(core_write_data),
+    .o_controller_ready(controller_ready),
+
+    .o_read_data_valid(read_data_valid),
+    .o_read_data(read_data),
+
+    .i_backend_controller_ready_bc0(backend_controller_ready_bc0),
+    .i_backend_controller_ready_bc1(backend_controller_ready_bc1),
+    .i_backend_controller_ready_bc2(backend_controller_ready_bc2),
+    .i_backend_controller_ready_bc3(backend_controller_ready_bc3),
+
+    .o_frontend_command_valid_bc0(frontend_command_valid_bc0),
+    .o_frontend_command_valid_bc1(frontend_command_valid_bc1),
+    .o_frontend_command_valid_bc2(frontend_command_valid_bc2),
+    .o_frontend_command_valid_bc3(frontend_command_valid_bc3),
+
+    .o_frontend_command_bc0(frontend_command_bc0),
+    .o_frontend_command_bc1(frontend_command_bc1),
+    .o_frontend_command_bc2(frontend_command_bc2),
+    .o_frontend_command_bc3(frontend_command_bc3),
+
+    .o_frontend_write_data_bc0(frontend_write_data_bc0),
+    .o_frontend_write_data_bc1(frontend_write_data_bc1),
+    .o_frontend_write_data_bc2(frontend_write_data_bc2),
+    .o_frontend_write_data_bc3(frontend_write_data_bc3),
+
+    .o_backend_controller_ren_bc0(backend_controller_ren_bc0),
+    .o_backend_controller_ren_bc1(backend_controller_ren_bc1),
+    .o_backend_controller_ren_bc2(backend_controller_ren_bc2),
+    .o_backend_controller_ren_bc3(backend_controller_ren_bc3),
+
+    .i_returned_data_valid_bc0(returned_data_valid_bc0),
+    .i_returned_data_valid_bc1(returned_data_valid_bc1),
+    .i_returned_data_valid_bc2(returned_data_valid_bc2),
+    .i_returned_data_valid_bc3(returned_data_valid_bc3),
+
+    .i_returned_data_bc0(returned_data_bc0),
+    .i_returned_data_bc1(returned_data_bc1),
+    .i_returned_data_bc2(returned_data_bc2),
+    .i_returned_data_bc3(returned_data_bc3)
+);
 
 
 endmodule

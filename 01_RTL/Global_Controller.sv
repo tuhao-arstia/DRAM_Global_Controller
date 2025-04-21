@@ -7,6 +7,7 @@
 
 `include "write_addr_fifo.sv"
 `include "write_request_fifo.sv"
+`include "DW_fifo_s1_df.v"
 
 `define GLOBAL_CONTROLLER_WORD_SIZE 1024
 
@@ -192,37 +193,39 @@ logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data;
 //---------------------------------------//
 assign hs_request_channel = i_command_valid && o_controller_ready;
 
-always_ff @(posedge i_clk or negedge i_rst_n) 
-begin: I_COMMAND
-    if(!i_rst_n) 
-    begin
-        command <= 0;
-    end
-    else if (hs_request_channel)
-    begin
-        command <= i_command;
-    end
-    else
-    begin
-        command <= 0;
-    end
-end
+assign command = i_command;
+// always_ff @(posedge i_clk or negedge i_rst_n) 
+// begin: I_COMMAND
+    // if(!i_rst_n) 
+    // begin
+        // command <= 0;
+    // end
+    // else if (hs_request_channel)
+    // begin
+        // command <= i_command;
+    // end
+    // else
+    // begin
+        // command <= 0;
+    // end
+// end
 
-always_ff @(posedge i_clk or negedge i_rst_n)
-begin: I_WRITE_DATA
-    if(!i_rst_n)
-    begin
-        write_data <= 0;
-    end
-    else if(hs_request_channel && i_command.op_type == OP_WRITE)
-    begin
-        write_data <= i_write_data;
-    end
-    else
-    begin
-        write_data <= 0;
-    end
-end
+assign write_data = i_write_data;
+// always_ff @(posedge i_clk or negedge i_rst_n)
+// begin: I_WRITE_DATA
+    // if(!i_rst_n)
+    // begin
+        // write_data <= 0;
+    // end
+    // else if(hs_request_channel && i_command.op_type == OP_WRITE)
+    // begin
+        // write_data <= i_write_data;
+    // end
+    // else
+    // begin
+        // write_data <= 0;
+    // end
+// end
 
 // o_controller_ready
 // check this one later
@@ -249,33 +252,71 @@ read_request_fifo (
     .data_out(read_request_candidate)
 );
 
-assign read_request_wr_en = (command.op_type == OP_READ);
+
+assign read_request_wr_en = (command.op_type == OP_READ) && hs_request_channel;
+// always_ff @(posedge i_clk or negedge i_rst_n)
+// begin :READ_REQUEST_WR_EN
+    // if(!i_rst_n)
+    // begin
+        // read_request_wr_en <= 0;
+    // end
+    // else
+    // begin
+        // read_request_wr_en <= (command.op_type == OP_READ);
+    // end
+// end
 
 always_comb
 begin : READ_REQUEST_FIFO_RD_EN
-    if(!scheduled_request_fifo_full && !read_request_fifo_empty)
+    read_request_rd_en = 0;
+    if(!read_request_fifo_empty)
     begin
-        if( write_flush && !write_request_fifo_empty )
+        if(write_flush && !write_request_fifo_empty)
         begin
             read_request_rd_en = 0;
         end
-        else
+        else if(!scheduled_request_fifo_full)
         begin
             read_request_rd_en = 1;
         end
-    end
-    else
-    begin
-        read_request_rd_en = 0;
+        else
+        begin
+            read_request_rd_en = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3);
+        end
     end
 end
+// always_ff @(posedge i_clk or negedge i_rst_n)
+// begin : READ_REQUEST_FIFO_RD_EN
+    // if (!i_rst_n)
+    // begin
+        // read_request_rd_en <= 0;
+    // end
+    // else
+    // begin
+        // if (!scheduled_request_fifo_full && !read_request_fifo_empty)
+        // begin
+            // if (write_flush && !write_request_fifo_empty)
+            // begin
+                // read_request_rd_en <= 0;
+            // end
+            // else
+            // begin
+                // read_request_rd_en <= 1;
+            // end
+        // end
+        // else
+        // begin
+            // read_request_rd_en <= 0;
+        // end
+    // end
+// end
 
 // write request fifo: see write_request_fifo.sv
 write_request_fifo write_request_fifo (
     .clk(i_clk),
     .rst_n(i_rst_n),
-    .push_req_n(~write_request_wr_en),
-    .pop_req_n(~write_request_rd_en),
+    .push_req_n(write_request_wr_en),
+    .pop_req_n(write_request_rd_en),
     .data_in(command),
     .raw_flag(raw_flag),
     .empty(write_request_fifo_empty),
@@ -285,26 +326,63 @@ write_request_fifo write_request_fifo (
     .write_flush_flag(write_flush)
 );
 
-assign write_request_wr_en = (command.op_type == OP_WRITE);
+assign write_request_wr_en = (command.op_type == OP_WRITE) && hs_request_channel ;
+// always_ff @(posedge i_clk or negedge i_rst_n)
+// begin : WRITE_REQUEST_WR_EN
+    // if (!i_rst_n)
+    // begin
+        // write_request_wr_en <= 0;
+    // end
+    // else
+    // begin
+        // write_request_wr_en <= (command.op_type == OP_WRITE);
+    // end
+// end
 
 always_comb
 begin : WRITE_REQUEST_FIFO_RD_EN
-    if(!scheduled_request_fifo_full && !write_request_fifo_empty)
+    write_request_rd_en = 0;
+
+    if(!write_request_fifo_empty)
     begin
         if(write_flush || read_request_fifo_empty)
         begin
-            write_request_rd_en = 1;
+            if(!scheduled_request_fifo_full)
+            begin
+                write_request_rd_en = 1;
+            end
+            else
+            begin
+                write_request_rd_en = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3);
+            end
         end
-        else
-        begin
-            write_request_rd_en = 0;
-        end
-    end
-    else
-    begin
-        write_request_rd_en = 0;
     end
 end
+// always_ff @(posedge i_clk or negedge i_rst_n)
+// begin : WRITE_REQUEST_FIFO_RD_EN
+    // if (!i_rst_n)
+    // begin
+        // write_request_rd_en <= 0;
+    // end
+    // else
+    // begin
+        // if (!scheduled_request_fifo_full && !write_request_fifo_empty)
+        // begin
+            // if (write_flush || read_request_fifo_empty)
+            // begin
+                // write_request_rd_en <= 1;
+            // end
+            // else
+            // begin
+                // write_request_rd_en <= 0;
+            // end
+        // end
+        // else
+        // begin
+            // write_request_rd_en <= 0;
+        // end
+    // end
+// end
 
 // scheduled request fifo
 DW_fifo_s1_sf #(command_width, fifo_depth, ae_level, af_level, err_mode, rst_mode)
@@ -324,7 +402,7 @@ scheduled_request_fifo (
     .data_out(scheduled_request_fifo_out)
 );
 
-assign scheduled_request_wr_en = !read_request_fifo_empty || !write_request_fifo_empty;
+assign scheduled_request_wr_en = !read_request_fifo_empty || !write_request_fifo_empty && !scheduled_request_fifo_full;
 
 always_comb
 begin : SCHEDULED_REQUEST_FIFO_RD_EN
@@ -411,16 +489,19 @@ begin : SCHEDULED_WRITE_DATA_FIFO_WR_EN
     scheduled_write_data_wr_en = 0;
 
     // condition is same as scheduled_request_fifo_in
-    if(!read_request_fifo_empty)
+    if(!scheduled_request_fifo_full)
     begin
-        if(write_flush && !write_request_fifo_empty)
+        if(!read_request_fifo_empty)
+        begin
+            if(write_flush && !write_request_fifo_empty)
+            begin
+                scheduled_write_data_wr_en = 1;
+            end
+        end
+        else if(!write_request_fifo_empty)
         begin
             scheduled_write_data_wr_en = 1;
         end
-    end
-    else if(!write_request_fifo_empty)
-    begin
-        scheduled_write_data_wr_en = 1;
     end
 end
 
@@ -618,22 +699,22 @@ always_ff @( posedge i_clk or negedge i_rst_n )
 begin : O_FRONTEND_COMMAND
     if(!i_rst_n) 
     begin
-        o_frontend_command_bc0.op_type <= OP_READ;
+        o_frontend_command_bc0.op_type <= OP_WRITE;
         o_frontend_command_bc0.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc0.row_addr <= 0;
         o_frontend_command_bc0.col_addr <= 0;
 
-        o_frontend_command_bc1.op_type <= OP_READ;
+        o_frontend_command_bc1.op_type <= OP_WRITE;
         o_frontend_command_bc1.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc1.row_addr <= 0;
         o_frontend_command_bc1.col_addr <= 0;
 
-        o_frontend_command_bc2.op_type <= OP_READ;
+        o_frontend_command_bc2.op_type <= OP_WRITE;
         o_frontend_command_bc2.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc2.row_addr <= 0;
         o_frontend_command_bc2.col_addr <= 0;
 
-        o_frontend_command_bc3.op_type <= OP_READ;
+        o_frontend_command_bc3.op_type <= OP_WRITE;
         o_frontend_command_bc3.data_type <= DATA_TYPE_WEIGHTS;
         o_frontend_command_bc3.row_addr <= 0;
         o_frontend_command_bc3.col_addr <= 0;

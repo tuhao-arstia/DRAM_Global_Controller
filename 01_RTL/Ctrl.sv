@@ -399,18 +399,31 @@ wire rdata_fifo_vfull;
 wire rdata_fifo_full;
 wire [READ_DATA_FIFO_WIDTH-1:0] rdata_fifo_out;
 
-always_ff@(posedge clk or negedge power_on_rst_n)
-begin:READ_DATA_OUTPUT_CTRL
-if(~power_on_rst_n)
-  begin
-    read_data <= 'b0;
-    read_data_valid <= 1'b0;
-  end
-  else
-  begin
-    read_data <= rdata_fifo_out;
-    read_data_valid <= ~rdata_fifo_empty && i_controller_ren ;
-  end
+// always_ff@(posedge clk or negedge power_on_rst_n)
+// begin:READ_DATA_OUTPUT_CTRL
+// if(~power_on_rst_n)
+//   begin
+    // read_data <= 'b0;
+    // read_data_valid <= 1'b0;
+//   end
+//   else
+//   begin
+    // read_data <= rdata_fifo_out;
+    // read_data_valid <= ~rdata_fifo_empty && i_controller_ren ;
+//   end
+// end
+always_comb 
+begin: READ_DATA_OUTPUT_CTRL
+    if(~power_on_rst_n) 
+    begin
+        read_data = 'b0;
+        read_data_valid = 1'b0;
+    end 
+    else 
+    begin
+        read_data = rdata_fifo_out;
+        read_data_valid = ~rdata_fifo_empty && i_controller_ren;
+    end
 end
 
 DW_fifo_s1_sf_inst #(.width(READ_DATA_FIFO_WIDTH),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rdata_out_fifo(

@@ -537,46 +537,46 @@ always_ff@(posedge i_clk or negedge i_rst_n) begin
 end
 
 //i_command output control
-always@(negedge i_clk or negedge i_rst_n) begin
+always@(posedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         i_command <= 'd0;
         i_command_valid <= 1;
         i_write_data <= 'd0;
     end else begin
         if(command_sent_handshake_f) begin
-        	if(i==`TOTAL_CMD) begin
+        	if(i==`TOTAL_CMD-1) begin
         	    i_command <= 0 ;
         	    i<=i ;
         	    i_command_valid<=0 ;
         	    i_write_data <= 0 ;
         	end
         	else begin
-        		if(i<=cmd_count) begin
-        	      i_command <= command_table[i] ;
-        	      i_command_valid <=1 ;
+                if(i<cmd_count-1) begin
+        	        i_command <= command_table[i+1] ;
+        	        i_command_valid <=1 ;
 
-        	      if(command_table_out.op_type == OP_WRITE) begin //write
-        	        i_write_data <= write_data_table[j];
-        	      end
-        	      else begin
-        	        i_write_data <= 0;
-        	      end
+        	        if(command_table_out.op_type == OP_WRITE && i!=cmd_count/2-1) begin //write
+        	          i_write_data <= write_data_table[j+1];
+        	        end
+        	        else begin
+        	          i_write_data <= 0;
+        	        end
 
-        		  if(command_sent_handshake_f) // only if handshake can you send i_command
-        		  begin
-        		  	i<=i+1 ;
-        	        j<=j+1 ;
-        		  end
+        		    if(command_sent_handshake_f) // only if handshake can you send i_command
+        		    begin
+        		    	i<=i+1 ;
+        	            j<=j+1 ;
+        		    end
         	    end
         	    else begin
-        	      i<=i;
-        	      i_command_valid<=0;
+        	        i<=i;
+        	        i_command_valid<=0;
         	    end
         	  end
 
         end
         else begin
-          i_command <= 'd0 ;
+          i_command <= i_command;
           i<=i ;
           i_command_valid<=1 ;
         end
@@ -600,7 +600,7 @@ always@(negedge i_clk or negedge i_rst_n) begin
   else if(o_read_data_valid==1 && debug_on==1) begin
   	if(rr_back==(`TOTAL_ROW-1) && cc_back==`TOTAL_COL-`TEST_COL_STRIDE)
   	  rr_back <= `BEGIN_TEST_ROW ;
-  	else if(cc_back==`TOTAL_COL-`TEST_COL_STRIDE)
+  	else if(cc_back==`TOTAL_COL-`TEST_COL_STRIDE && bb_back==`TOTAL_BANK-1)
   	  rr_back <= rr_back + `TEST_ROW_STRIDE ;
   	else
   	  rr_back <= rr_back ;

@@ -121,16 +121,20 @@ parameter write_data_width = `GLOBAL_CONTROLLER_WORD_SIZE;
 parameter command_width = `OP_BITS+`DATA_TYPE_BITS+`ROW_BITS+`COL_BITS+`BANK_BITS;
 parameter bank_addr_width = `BANK_BITS;
 parameter fifo_depth = 8;
+parameter scheduled_fifo_depth = 2;
+parameter read_order_fifo_depth = 32;
 parameter ae_level = 1;
 parameter af_level = 1;
-parameter af_level_write_request = 4; // 12 write requests
 parameter err_mode = 0;
 parameter rst_mode = 0;
 integer i;
 
-
 // REQUEST CHANNEL
 logic hs_request_channel;
+// COMMAND CHANNEL TRANSACTION
+logic command_transaction;
+// RETURNED DATA CHANNEL TRANSACTION
+logic returned_data_transaction;
 
 frontend_command_t command;
 logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] write_data;
@@ -182,8 +186,6 @@ logic [`BANK_BITS-1:0] read_order_fifo_in, read_order_fifo_out;
 logic read_order_wr_en, read_order_rd_en;
 logic read_order_fifo_full, read_order_fifo_empty;
 logic read_order_fifo_error;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data;
-
 
 //----------------------------------------------------//
 //              Global Controller DESIGN              //
@@ -191,45 +193,19 @@ logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data;
 //---------------------------------------//
 //            Request Channel            //
 //---------------------------------------//
-assign hs_request_channel = i_command_valid && o_controller_ready;
+assign hs_request_channel = (!i_rst_n)? 0 : i_command_valid && o_controller_ready;
 
 assign command = i_command;
-// always_ff @(posedge i_clk or negedge i_rst_n) 
-// begin: I_COMMAND
-    // if(!i_rst_n) 
-    // begin
-        // command <= 0;
-    // end
-    // else if (hs_request_channel)
-    // begin
-        // command <= i_command;
-    // end
-    // else
-    // begin
-        // command <= 0;
-    // end
-// end
 
 assign write_data = i_write_data;
-// always_ff @(posedge i_clk or negedge i_rst_n)
-// begin: I_WRITE_DATA
-    // if(!i_rst_n)
-    // begin
-        // write_data <= 0;
-    // end
-    // else if(hs_request_channel && i_command.op_type == OP_WRITE)
-    // begin
-        // write_data <= i_write_data;
-    // end
-    // else
-    // begin
-        // write_data <= 0;
-    // end
-// end
 
 // o_controller_ready
-// check this one later
 assign o_controller_ready = !read_request_fifo_full && !write_request_fifo_full && !write_flush;
+// always_comb
+// begin: O_CONTROLLER_READY
+    // o_controller_ready = 0;
+    // if    
+// end
 
 //------------------------------------------//
 //             Command Channel              //
@@ -252,19 +228,7 @@ read_request_fifo (
     .data_out(read_request_candidate)
 );
 
-
 assign read_request_wr_en = (command.op_type == OP_READ) && hs_request_channel;
-// always_ff @(posedge i_clk or negedge i_rst_n)
-// begin :READ_REQUEST_WR_EN
-    // if(!i_rst_n)
-    // begin
-        // read_request_wr_en <= 0;
-    // end
-    // else
-    // begin
-        // read_request_wr_en <= (command.op_type == OP_READ);
-    // end
-// end
 
 always_comb
 begin : READ_REQUEST_FIFO_RD_EN
@@ -281,35 +245,10 @@ begin : READ_REQUEST_FIFO_RD_EN
         end
         else
         begin
-            read_request_rd_en = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3);
+            read_request_rd_en = command_transaction;
         end
     end
 end
-// always_ff @(posedge i_clk or negedge i_rst_n)
-// begin : READ_REQUEST_FIFO_RD_EN
-    // if (!i_rst_n)
-    // begin
-        // read_request_rd_en <= 0;
-    // end
-    // else
-    // begin
-        // if (!scheduled_request_fifo_full && !read_request_fifo_empty)
-        // begin
-            // if (write_flush && !write_request_fifo_empty)
-            // begin
-                // read_request_rd_en <= 0;
-            // end
-            // else
-            // begin
-                // read_request_rd_en <= 1;
-            // end
-        // end
-        // else
-        // begin
-            // read_request_rd_en <= 0;
-        // end
-    // end
-// end
 
 // write request fifo: see write_request_fifo.sv
 write_request_fifo write_request_fifo (
@@ -327,17 +266,6 @@ write_request_fifo write_request_fifo (
 );
 
 assign write_request_wr_en = (command.op_type == OP_WRITE) && hs_request_channel ;
-// always_ff @(posedge i_clk or negedge i_rst_n)
-// begin : WRITE_REQUEST_WR_EN
-    // if (!i_rst_n)
-    // begin
-        // write_request_wr_en <= 0;
-    // end
-    // else
-    // begin
-        // write_request_wr_en <= (command.op_type == OP_WRITE);
-    // end
-// end
 
 always_comb
 begin : WRITE_REQUEST_FIFO_RD_EN
@@ -353,36 +281,11 @@ begin : WRITE_REQUEST_FIFO_RD_EN
             end
             else
             begin
-                write_request_rd_en = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3);
+                write_request_rd_en = command_transaction;
             end
         end
     end
 end
-// always_ff @(posedge i_clk or negedge i_rst_n)
-// begin : WRITE_REQUEST_FIFO_RD_EN
-    // if (!i_rst_n)
-    // begin
-        // write_request_rd_en <= 0;
-    // end
-    // else
-    // begin
-        // if (!scheduled_request_fifo_full && !write_request_fifo_empty)
-        // begin
-            // if (write_flush || read_request_fifo_empty)
-            // begin
-                // write_request_rd_en <= 1;
-            // end
-            // else
-            // begin
-                // write_request_rd_en <= 0;
-            // end
-        // end
-        // else
-        // begin
-            // write_request_rd_en <= 0;
-        // end
-    // end
-// end
 
 // scheduled request fifo
 DW_fifo_s1_sf #(command_width, fifo_depth, ae_level, af_level, err_mode, rst_mode)
@@ -402,7 +305,23 @@ scheduled_request_fifo (
     .data_out(scheduled_request_fifo_out)
 );
 
-assign scheduled_request_wr_en = !read_request_fifo_empty || !write_request_fifo_empty && !scheduled_request_fifo_full;
+// assign scheduled_request_wr_en = !read_request_fifo_empty || !write_request_fifo_empty && !scheduled_request_fifo_full;
+always_comb
+begin : SCHEDULED_REQUEST_FIFO_WR_EN
+    scheduled_request_wr_en = 0;
+
+    if(!read_request_fifo_empty || !write_request_fifo_empty)
+    begin
+        if(!scheduled_request_fifo_full)
+        begin
+            scheduled_request_wr_en = 1;
+        end
+        else
+        begin
+            scheduled_request_wr_en = command_transaction;
+        end
+    end
+end
 
 always_comb
 begin : SCHEDULED_REQUEST_FIFO_RD_EN
@@ -602,6 +521,7 @@ begin:RAW_DETECTION
 end
 
 // command channels output logics
+assign command_transaction = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3) && (i_backend_controller_ready_bc0 || i_backend_controller_ready_bc1 || i_backend_controller_ready_bc2 || i_backend_controller_ready_bc3);
 // o_frontend_command_valid_bc0 - bc3
 always_ff @( posedge i_clk or negedge i_rst_n ) 
 begin : O_FRONTEND_COMMAND_VALID_BC0
@@ -769,9 +689,10 @@ assign hs_returned_data_channel_0 = i_returned_data_valid_bc0 && o_backend_contr
 assign hs_returned_data_channel_1 = i_returned_data_valid_bc1 && o_backend_controller_ren_bc1;
 assign hs_returned_data_channel_2 = i_returned_data_valid_bc2 && o_backend_controller_ren_bc2;
 assign hs_returned_data_channel_3 = i_returned_data_valid_bc3 && o_backend_controller_ren_bc3;
+assign returned_data_transaction = (hs_returned_data_channel_0 || hs_returned_data_channel_1 || hs_returned_data_channel_2 || hs_returned_data_channel_3);
 
 // read order fifo
-DW_fifo_s1_sf #(bank_addr_width, fifo_depth, ae_level, af_level, err_mode, rst_mode)
+DW_fifo_s1_sf #(bank_addr_width, read_order_fifo_depth, ae_level, af_level, err_mode, rst_mode)
 read_order_fifo (
     .clk(i_clk),
     .rst_n(i_rst_n),
@@ -788,15 +709,21 @@ read_order_fifo (
     .data_out(read_order_fifo_out)
 );
 
+assign read_order_fifo_in = scheduled_request_fifo_out.bank_addr;
+
 always_comb 
 begin : READ_ORDER_FIFO_WR_EN
     read_order_wr_en = 0;
-    if(!scheduled_request_fifo_empty)
+    if(scheduled_request_fifo_out.op_type == OP_READ)
     begin
-        if(scheduled_request_fifo_out.op_type == OP_READ)
-        begin
+        // if(!read_order_fifo_full)
+        // begin
             read_order_wr_en = scheduled_request_rd_en;
-        end
+        // end
+        // else
+        // begin
+            // read_order_wr_en = returned_data_transaction;
+        // end
     end
 end
 
@@ -804,7 +731,7 @@ always_comb
 begin : READ_ORDER_FIFO_RD_EN
     read_order_rd_en = 0;
     
-    if(hs_returned_data_channel_0 || hs_returned_data_channel_1 || hs_returned_data_channel_2 || hs_returned_data_channel_3)
+    if(returned_data_transaction)
     begin
         read_order_rd_en = 1;
     end
@@ -864,35 +791,6 @@ begin : O_BACKEND_CONTROLLER_REN_BC3
     end
 end
 
-// returned data
-always_ff @(posedge i_clk or negedge i_rst_n)
-begin : RETURNED_DATA
-    if(!i_rst_n) 
-    begin
-        returned_data <= 0;
-    end
-    else if(hs_returned_data_channel_0)
-    begin
-        returned_data <= i_returned_data_bc0;
-    end
-    else if(hs_returned_data_channel_1)
-    begin
-        returned_data <= i_returned_data_bc1;
-    end
-    else if(hs_returned_data_channel_2)
-    begin
-        returned_data <= i_returned_data_bc2;
-    end
-    else if(hs_returned_data_channel_3)
-    begin
-        returned_data <= i_returned_data_bc3;
-    end
-    else 
-    begin
-        returned_data <= 0;
-    end
-end
-
 //------------------------------------------//
 //             Read Data Channel            //
 //------------------------------------------//
@@ -914,12 +812,27 @@ begin : O_READ_DATA
     begin
         o_read_data <= 0;
     end
-    else
+    else if(hs_returned_data_channel_0)
     begin
-        o_read_data <= returned_data;
+        o_read_data <= i_returned_data_bc0;
+    end
+    else if(hs_returned_data_channel_1)
+    begin
+        o_read_data <= i_returned_data_bc1;
+    end
+    else if(hs_returned_data_channel_2)
+    begin
+        o_read_data <= i_returned_data_bc2;
+    end
+    else if(hs_returned_data_channel_3)
+    begin
+        o_read_data <= i_returned_data_bc3;
+    end
+    else 
+    begin
+        o_read_data <= 0;
     end
 end
-
 
 
 endmodule

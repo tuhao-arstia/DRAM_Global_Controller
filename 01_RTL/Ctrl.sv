@@ -128,6 +128,8 @@ wire issue_fifo_stall;
 
 d_state_t d_state,d_state_nxt ;
 
+logic refresh_pre_flag_ff;
+
 
 
 dq_state_t dq_state,dq_state_nxt ;
@@ -226,6 +228,9 @@ reg tP_all_zero ;
 
 bank_state_t ba0_state ;
 
+wire refresh_pre_flag = now_issue == ATCMD_PREA || now_issue == ATCMD_REFRESH;
+
+
 
 wire ba0_busy;
 wire [`ADDR_BITS-1:0] ba0_addr;
@@ -318,7 +323,7 @@ tP_counter  tP_ba0(.rst_n        (power_on_rst_n),
                    .clk          (clk),
                    .f_bank       (f_bank),
                    .BL           (MR0[1:0]),
-                   .refresh_flag (now_issue == ATCMD_REFRESH),
+                   .refresh_flag (refresh_pre_flag || refresh_pre_flag_ff),
                    .state_nxt    (state_nxt),
                    .number       (3'd0),
                    .tP_ba_counter(tP_ba0_counter),
@@ -399,19 +404,6 @@ wire rdata_fifo_vfull;
 wire rdata_fifo_full;
 wire [READ_DATA_FIFO_WIDTH-1:0] rdata_fifo_out;
 
-// always_ff@(posedge clk or negedge power_on_rst_n)
-// begin:READ_DATA_OUTPUT_CTRL
-// if(~power_on_rst_n)
-//   begin
-    // read_data <= 'b0;
-    // read_data_valid <= 1'b0;
-//   end
-//   else
-//   begin
-    // read_data <= rdata_fifo_out;
-    // read_data_valid <= ~rdata_fifo_empty && i_controller_ren ;
-//   end
-// end
 always_comb 
 begin: READ_DATA_OUTPUT_CTRL
     if(~power_on_rst_n) 
@@ -422,7 +414,7 @@ begin: READ_DATA_OUTPUT_CTRL
     else 
     begin
         read_data = rdata_fifo_out;
-        read_data_valid = ~rdata_fifo_empty && i_controller_ren;
+        read_data_valid = ~rdata_fifo_empty;
     end
 end
 
@@ -1106,7 +1098,7 @@ begin
           check_tCCD_violation_flag = (tCCD_counter != 1'b0) ? 1'b1 : 1'b0;
           check_tRTW_violation_flag = (tCCD_counter != 1'b0 || tRTW_counter != 0) ? 1'b1 : 1'b0;
         end
-        ATCMD_PRECHARGE:begin
+        ATCMD_PRECHARGE,ATCMD_PREA:begin
           check_tRAS_violation_flag = (tRAS_ba_cnt >= $unsigned(`CYCLE_TRC-`CYCLE_TRAS)) ? 1'b1 : 1'b0;
           check_tWR_violation_flag = (tP_ba_cnt != 1'b0 && tP_recode_state == CODE_WRITE_TO_PRECHARGE) ? 1'b1 : 1'b0;
           check_tRTP_violation_flag = (tP_ba_cnt != 1'b0 && tP_recode_state == CODE_READ_TO_PRECHARGE) ? 1'b1 : 1'b0;
@@ -1164,6 +1156,17 @@ always_comb begin
   now_addr = (isu_fifo_empty||issue_fifo_stall) ? 1'b0 : isu_fifo_out_cmd.addr ;
 end
 
+
+
+always_ff@(posedge clk or negedge power_on_rst_n) begin
+  if(~power_on_rst_n)
+    refresh_pre_flag_ff <= 1'b0;
+  else if(refresh_pre_flag)
+    refresh_pre_flag_ff <= 1'b1;
+  else if(state== FSM_REFRESH)
+    refresh_pre_flag_ff <= 1'b0;
+end
+
 //command state
 always_comb
 begin: MAIN_FSM_NEXT_BLOCK
@@ -1200,8 +1203,8 @@ begin: MAIN_FSM_NEXT_BLOCK
    FSM_WRITEA,
    // TODO Add ATCMD_WRA,ATCMD_RDA
    FSM_READY     :  case(now_issue) // When issuing command, checks for the timing violation
-                       ATCMD_REFRESH  : state_nxt = FSM_WAIT_TRP ; // This needs to be modified to wait TRP instead.
-                       ATCMD_NOP      : state_nxt = FSM_READY ;
+                       ATCMD_REFRESH  : state_nxt = (state ==FSM_PRE) ? FSM_WAIT_TRP : FSM_REFRESH ; // This needs to be modified to wait TRP instead.
+                       ATCMD_NOP      : state_nxt = FSM_READY;
                        ATCMD_ACTIVE   : if(check_tRC_violation_flag == 1'b1)//tRC violation
                                            state_nxt = FSM_WAIT_TRC ;
                                          else if(check_tRP_violation_flag == 1'b1 )//tRP violation
@@ -1229,7 +1232,7 @@ begin: MAIN_FSM_NEXT_BLOCK
                                         else
                                           state_nxt = FSM_WRITE ;
 
-                       ATCMD_PRECHARGE,ATCMD_RDA,ATCMD_WRA:
+                       ATCMD_PRECHARGE,ATCMD_PREA,ATCMD_RDA,ATCMD_WRA:
                                         if(check_tRAS_violation_flag == 1'b1) //tRAS violation
                                           state_nxt = FSM_WAIT_TRAS ;
                                         else if(check_tWR_violation_flag == 1'b1)//tWR violation

@@ -2,9 +2,6 @@
 `include "frontend_cmd_definition_pkg.sv"
 `include "PATTERN.sv"
 
-
-
-
 `ifdef RTL
     `include "Global_Controller.sv"
     `include "Backend_Controller.sv"
@@ -21,6 +18,20 @@
 module TESTBED;
 
 `include "2048Mb_ddr3_parameters.vh"
+
+initial begin
+    `ifdef RTL
+        $fsdbDumpfile("Global_Controller.fsdb");
+        $fsdbDumpvars(0,"+all");
+        $fsdbDumpSVA;
+    `endif
+    `ifdef GATE
+        $sdf_annotate("Global_Controller_SYN.sdf", I_Global_Controller);
+        $fsdbDumpfile("Global_Controller_SYN.fsdb");
+        $fsdbDumpvars(0,"+all");
+        $fsdbDumpSVA;
+    `endif
+end
 
 logic clk;
 logic clk2;
@@ -262,21 +273,6 @@ wire pad_ck_n_bc0;
 wire pad_ck_n_bc1;
 wire pad_ck_n_bc2;
 wire pad_ck_n_bc3;
-
-
-initial begin
-    `ifdef RTL
-        $fsdbDumpfile("Global_Controller.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
-    `endif
-    `ifdef GATE
-        $sdf_annotate("Global_Controller_SYN.sdf", I_Global_Controller);
-        $fsdbDumpfile("Global_Controller_SYN.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
-    `endif
-end
 
 // Instantiate the Global Controller module
 Global_Controller I_Global_Controller (

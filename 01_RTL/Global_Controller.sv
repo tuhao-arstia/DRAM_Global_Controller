@@ -133,6 +133,10 @@ integer i;
 logic hs_request_channel;
 // COMMAND CHANNEL TRANSACTION
 logic command_transaction;
+logic command_transaction_0;
+logic command_transaction_1;
+logic command_transaction_2;
+logic command_transaction_3;
 // RETURNED DATA CHANNEL TRANSACTION
 logic returned_data_transaction;
 
@@ -331,16 +335,24 @@ begin : SCHEDULED_REQUEST_FIFO_RD_EN
     begin
         case (scheduled_request_fifo_out.bank_addr)
             2'b00: begin
-                scheduled_request_rd_en = i_backend_controller_ready_bc0;
+                scheduled_request_rd_en = command_transaction_0;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc0 && !o_frontend_command_valid_bc0;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc0 ;
             end
             2'b01: begin
-                scheduled_request_rd_en = i_backend_controller_ready_bc1;
+                scheduled_request_rd_en = command_transaction_1;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc1 && !o_frontend_command_valid_bc1;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc0 ;
             end
             2'b10: begin
-                scheduled_request_rd_en = i_backend_controller_ready_bc2;
+                scheduled_request_rd_en = command_transaction_2;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc2 && !o_frontend_command_valid_bc2;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc0 ;
             end
             2'b11: begin
-                scheduled_request_rd_en = i_backend_controller_ready_bc3;
+                scheduled_request_rd_en = command_transaction_3;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc3 && !o_frontend_command_valid_bc3;
+                // scheduled_request_rd_en = i_backend_controller_ready_bc0 ;
             end
         endcase
     end
@@ -405,23 +417,23 @@ scheduled_write_data_fifo (
 
 always_comb
 begin : SCHEDULED_WRITE_DATA_FIFO_WR_EN
-    scheduled_write_data_wr_en = 0;
+    scheduled_write_data_wr_en = write_request_rd_en;
 
-    // condition is same as scheduled_request_fifo_in
-    if(!scheduled_request_fifo_full)
-    begin
-        if(!read_request_fifo_empty)
-        begin
-            if(write_flush && !write_request_fifo_empty)
-            begin
-                scheduled_write_data_wr_en = 1;
-            end
-        end
-        else if(!write_request_fifo_empty)
-        begin
-            scheduled_write_data_wr_en = 1;
-        end
-    end
+    // condition is same as write request read enable
+    // if(!scheduled_request_fifo_full)
+    // begin
+        // if(!read_request_fifo_empty)
+        // begin
+            // if(write_flush && !write_request_fifo_empty)
+            // begin
+                // scheduled_write_data_wr_en = 1;
+            // end
+        // end
+        // else if(!write_request_fifo_empty)
+        // begin
+            // scheduled_write_data_wr_en = 1;
+        // end
+    // end
 end
 
 always_comb 
@@ -521,163 +533,285 @@ begin:RAW_DETECTION
 end
 
 // command channels output logics
-assign command_transaction = (o_frontend_command_valid_bc0 || o_frontend_command_valid_bc1 || o_frontend_command_valid_bc2 || o_frontend_command_valid_bc3) && (i_backend_controller_ready_bc0 || i_backend_controller_ready_bc1 || i_backend_controller_ready_bc2 || i_backend_controller_ready_bc3);
-// o_frontend_command_valid_bc0 - bc3
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+assign command_transaction_0 = i_backend_controller_ready_bc0 && o_frontend_command_valid_bc0;
+assign command_transaction_1 = i_backend_controller_ready_bc1 && o_frontend_command_valid_bc1;
+assign command_transaction_2 = i_backend_controller_ready_bc2 && o_frontend_command_valid_bc2;
+assign command_transaction_3 = i_backend_controller_ready_bc3 && o_frontend_command_valid_bc3;
+assign command_transaction = command_transaction_0 || command_transaction_1 || command_transaction_2 || command_transaction_3;
+// o_frontend_command_valid
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_COMMAND_VALID_BC0
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_command_valid_bc0 <= 0;
+    // end
+    // else if(!scheduled_request_fifo_empty)
+    // begin
+        // if(i_backend_controller_ready_bc0 && scheduled_request_fifo_out.bank_addr == 2'b00)
+        // begin
+            // o_frontend_command_valid_bc0 <= 1;
+            // o_frontend_command_valid_bc0 <= ~o_frontend_command_valid_bc0;
+        // end
+        // else
+        // begin
+            // o_frontend_command_valid_bc0 <= 0;
+        // end
+    // end
+    // else 
+    // begin
+        // o_frontend_command_valid_bc0 <= 0;
+    // end
+// end
+// 
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_COMMAND_VALID_BC1
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_command_valid_bc1 <= 0;
+    // end
+    // else if(!scheduled_request_fifo_empty)
+    // begin
+        // if(i_backend_controller_ready_bc1 && scheduled_request_fifo_out.bank_addr == 2'b01)
+        // begin
+            // o_frontend_command_valid_bc1 <= 1;
+            // o_frontend_command_valid_bc1 <= ~o_frontend_command_valid_bc1;
+        // end
+        // else
+        // begin
+            // o_frontend_command_valid_bc1 <= 0;
+        // end
+    // end
+    // else 
+    // begin
+        // o_frontend_command_valid_bc1 <= 0;
+    // end
+// end
+// 
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_COMMAND_VALID_BC2
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_command_valid_bc2 <= 0;
+    // end
+    // else if(!scheduled_request_fifo_empty)
+    // begin
+        // if(i_backend_controller_ready_bc2 && scheduled_request_fifo_out.bank_addr == 2'b10)
+        // begin
+            // o_frontend_command_valid_bc2 <= 1;
+            // o_frontend_command_valid_bc2 <= ~o_frontend_command_valid_bc2;
+        // end
+        // else
+        // begin
+            // o_frontend_command_valid_bc2 <= 0;
+        // end
+    // end
+    // else 
+    // begin
+        // o_frontend_command_valid_bc2 <= 0;
+    // end
+// end
+
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_COMMAND_VALID_BC3
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_command_valid_bc3 <= 0;
+    // end
+    // else if(!scheduled_request_fifo_empty)
+    // begin
+        // if(i_backend_controller_ready_bc3 && scheduled_request_fifo_out.bank_addr == 2'b11)
+        // begin
+            // o_frontend_command_valid_bc3 <= 1;
+            // o_frontend_command_valid_bc3 <= ~o_frontend_command_valid_bc3;
+        // end
+        // else
+        // begin
+            // o_frontend_command_valid_bc3 <= 0;
+        // end
+    // end
+    // else 
+    // begin
+        // o_frontend_command_valid_bc3 <= 0;
+    // end
+// end
+
+// o_frontend_command_valid logic rewritten as combinational logic
+always_comb
 begin : O_FRONTEND_COMMAND_VALID_BC0
-    if(!i_rst_n) 
-    begin
-        o_frontend_command_valid_bc0 <= 0;
-    end
-    else if(!scheduled_request_fifo_empty)
+    o_frontend_command_valid_bc0 = 0;
+    if(!scheduled_request_fifo_empty)
     begin
         if(i_backend_controller_ready_bc0 && scheduled_request_fifo_out.bank_addr == 2'b00)
         begin
-            o_frontend_command_valid_bc0 <= 1;
+            o_frontend_command_valid_bc0 = 1;
         end
-        else
-        begin
-            o_frontend_command_valid_bc0 <= 0;
-        end
-    end
-    else 
-    begin
-        o_frontend_command_valid_bc0 <= 0;
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+always_comb
 begin : O_FRONTEND_COMMAND_VALID_BC1
-    if(!i_rst_n) 
-    begin
-        o_frontend_command_valid_bc1 <= 0;
-    end
-    else if(!scheduled_request_fifo_empty)
+    o_frontend_command_valid_bc1 = 0;
+    if(!scheduled_request_fifo_empty)
     begin
         if(i_backend_controller_ready_bc1 && scheduled_request_fifo_out.bank_addr == 2'b01)
         begin
-            o_frontend_command_valid_bc1 <= 1;
+            o_frontend_command_valid_bc1 = 1;
         end
-        else
-        begin
-            o_frontend_command_valid_bc1 <= 0;
-        end
-    end
-    else 
-    begin
-        o_frontend_command_valid_bc1 <= 0;
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+always_comb
 begin : O_FRONTEND_COMMAND_VALID_BC2
-    if(!i_rst_n) 
-    begin
-        o_frontend_command_valid_bc2 <= 0;
-    end
-    else if(!scheduled_request_fifo_empty)
+    o_frontend_command_valid_bc2 = 0;
+    if(!scheduled_request_fifo_empty)
     begin
         if(i_backend_controller_ready_bc2 && scheduled_request_fifo_out.bank_addr == 2'b10)
         begin
-            o_frontend_command_valid_bc2 <= 1;
+            o_frontend_command_valid_bc2 = 1;
         end
-        else
-        begin
-            o_frontend_command_valid_bc2 <= 0;
-        end
-    end
-    else 
-    begin
-        o_frontend_command_valid_bc2 <= 0;
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+always_comb
 begin : O_FRONTEND_COMMAND_VALID_BC3
-    if(!i_rst_n) 
-    begin
-        o_frontend_command_valid_bc3 <= 0;
-    end
-    else if(!scheduled_request_fifo_empty)
+    o_frontend_command_valid_bc3 = 0;
+    if(!scheduled_request_fifo_empty)
     begin
         if(i_backend_controller_ready_bc3 && scheduled_request_fifo_out.bank_addr == 2'b11)
         begin
-            o_frontend_command_valid_bc3 <= 1;
+            o_frontend_command_valid_bc3 = 1;
         end
-        else
-        begin
-            o_frontend_command_valid_bc3 <= 0;
-        end
-    end
-    else 
-    begin
-        o_frontend_command_valid_bc3 <= 0;
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_COMMAND
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_command_bc0.op_type <= OP_WRITE;
+        // o_frontend_command_bc0.data_type <= DATA_TYPE_WEIGHTS;
+        // o_frontend_command_bc0.row_addr <= 0;
+        // o_frontend_command_bc0.col_addr <= 0;
+// 
+        // o_frontend_command_bc1.op_type <= OP_WRITE;
+        // o_frontend_command_bc1.data_type <= DATA_TYPE_WEIGHTS;
+        // o_frontend_command_bc1.row_addr <= 0;
+        // o_frontend_command_bc1.col_addr <= 0;
+// 
+        // o_frontend_command_bc2.op_type <= OP_WRITE;
+        // o_frontend_command_bc2.data_type <= DATA_TYPE_WEIGHTS;
+        // o_frontend_command_bc2.row_addr <= 0;
+        // o_frontend_command_bc2.col_addr <= 0;
+// 
+        // o_frontend_command_bc3.op_type <= OP_WRITE;
+        // o_frontend_command_bc3.data_type <= DATA_TYPE_WEIGHTS;
+        // o_frontend_command_bc3.row_addr <= 0;
+        // o_frontend_command_bc3.col_addr <= 0;
+    // end
+    // else
+    // begin
+        // o_frontend_command_bc0.op_type <= scheduled_request_fifo_out.op_type;
+        // o_frontend_command_bc0.data_type <= scheduled_request_fifo_out.data_type;
+        // o_frontend_command_bc0.row_addr <= scheduled_request_fifo_out.row_addr;
+        // o_frontend_command_bc0.col_addr <= scheduled_request_fifo_out.col_addr;
+// 
+        // o_frontend_command_bc1.op_type <= scheduled_request_fifo_out.op_type;
+        // o_frontend_command_bc1.data_type <= scheduled_request_fifo_out.data_type;
+        // o_frontend_command_bc1.row_addr <= scheduled_request_fifo_out.row_addr;
+        // o_frontend_command_bc1.col_addr <= scheduled_request_fifo_out.col_addr;
+// 
+        // o_frontend_command_bc2.op_type <= scheduled_request_fifo_out.op_type;
+        // o_frontend_command_bc2.data_type <= scheduled_request_fifo_out.data_type;
+        // o_frontend_command_bc2.row_addr <= scheduled_request_fifo_out.row_addr;
+        // o_frontend_command_bc2.col_addr <= scheduled_request_fifo_out.col_addr;
+// 
+        // o_frontend_command_bc3.op_type <= scheduled_request_fifo_out.op_type;
+        // o_frontend_command_bc3.data_type <= scheduled_request_fifo_out.data_type;
+        // o_frontend_command_bc3.row_addr <= scheduled_request_fifo_out.row_addr;
+        // o_frontend_command_bc3.col_addr <= scheduled_request_fifo_out.col_addr;
+    // end
+// end
+always_comb
 begin : O_FRONTEND_COMMAND
     if(!i_rst_n) 
     begin
-        o_frontend_command_bc0.op_type <= OP_WRITE;
-        o_frontend_command_bc0.data_type <= DATA_TYPE_WEIGHTS;
-        o_frontend_command_bc0.row_addr <= 0;
-        o_frontend_command_bc0.col_addr <= 0;
+        o_frontend_command_bc0.op_type = OP_WRITE;
+        o_frontend_command_bc0.data_type = DATA_TYPE_WEIGHTS;
+        o_frontend_command_bc0.row_addr = 0;
+        o_frontend_command_bc0.col_addr = 0;
 
-        o_frontend_command_bc1.op_type <= OP_WRITE;
-        o_frontend_command_bc1.data_type <= DATA_TYPE_WEIGHTS;
-        o_frontend_command_bc1.row_addr <= 0;
-        o_frontend_command_bc1.col_addr <= 0;
+        o_frontend_command_bc1.op_type = OP_WRITE;
+        o_frontend_command_bc1.data_type = DATA_TYPE_WEIGHTS;
+        o_frontend_command_bc1.row_addr = 0;
+        o_frontend_command_bc1.col_addr = 0;
 
-        o_frontend_command_bc2.op_type <= OP_WRITE;
-        o_frontend_command_bc2.data_type <= DATA_TYPE_WEIGHTS;
-        o_frontend_command_bc2.row_addr <= 0;
-        o_frontend_command_bc2.col_addr <= 0;
+        o_frontend_command_bc2.op_type = OP_WRITE;
+        o_frontend_command_bc2.data_type = DATA_TYPE_WEIGHTS;
+        o_frontend_command_bc2.row_addr = 0;
+        o_frontend_command_bc2.col_addr = 0;
 
-        o_frontend_command_bc3.op_type <= OP_WRITE;
-        o_frontend_command_bc3.data_type <= DATA_TYPE_WEIGHTS;
-        o_frontend_command_bc3.row_addr <= 0;
-        o_frontend_command_bc3.col_addr <= 0;
+        o_frontend_command_bc3.op_type = OP_WRITE;
+        o_frontend_command_bc3.data_type = DATA_TYPE_WEIGHTS;
+        o_frontend_command_bc3.row_addr = 0;
+        o_frontend_command_bc3.col_addr = 0;
     end
     else
     begin
-        o_frontend_command_bc0.op_type <= scheduled_request_fifo_out.op_type;
-        o_frontend_command_bc0.data_type <= scheduled_request_fifo_out.data_type;
-        o_frontend_command_bc0.row_addr <= scheduled_request_fifo_out.row_addr;
-        o_frontend_command_bc0.col_addr <= scheduled_request_fifo_out.col_addr;
+        o_frontend_command_bc0.op_type = scheduled_request_fifo_out.op_type;
+        o_frontend_command_bc0.data_type = scheduled_request_fifo_out.data_type;
+        o_frontend_command_bc0.row_addr = scheduled_request_fifo_out.row_addr;
+        o_frontend_command_bc0.col_addr = scheduled_request_fifo_out.col_addr;
 
-        o_frontend_command_bc1.op_type <= scheduled_request_fifo_out.op_type;
-        o_frontend_command_bc1.data_type <= scheduled_request_fifo_out.data_type;
-        o_frontend_command_bc1.row_addr <= scheduled_request_fifo_out.row_addr;
-        o_frontend_command_bc1.col_addr <= scheduled_request_fifo_out.col_addr;
+        o_frontend_command_bc1.op_type = scheduled_request_fifo_out.op_type;
+        o_frontend_command_bc1.data_type = scheduled_request_fifo_out.data_type;
+        o_frontend_command_bc1.row_addr = scheduled_request_fifo_out.row_addr;
+        o_frontend_command_bc1.col_addr = scheduled_request_fifo_out.col_addr;
 
-        o_frontend_command_bc2.op_type <= scheduled_request_fifo_out.op_type;
-        o_frontend_command_bc2.data_type <= scheduled_request_fifo_out.data_type;
-        o_frontend_command_bc2.row_addr <= scheduled_request_fifo_out.row_addr;
-        o_frontend_command_bc2.col_addr <= scheduled_request_fifo_out.col_addr;
+        o_frontend_command_bc2.op_type = scheduled_request_fifo_out.op_type;
+        o_frontend_command_bc2.data_type = scheduled_request_fifo_out.data_type;
+        o_frontend_command_bc2.row_addr = scheduled_request_fifo_out.row_addr;
+        o_frontend_command_bc2.col_addr = scheduled_request_fifo_out.col_addr;
 
-        o_frontend_command_bc3.op_type <= scheduled_request_fifo_out.op_type;
-        o_frontend_command_bc3.data_type <= scheduled_request_fifo_out.data_type;
-        o_frontend_command_bc3.row_addr <= scheduled_request_fifo_out.row_addr;
-        o_frontend_command_bc3.col_addr <= scheduled_request_fifo_out.col_addr;
+        o_frontend_command_bc3.op_type = scheduled_request_fifo_out.op_type;
+        o_frontend_command_bc3.data_type = scheduled_request_fifo_out.data_type;
+        o_frontend_command_bc3.row_addr = scheduled_request_fifo_out.row_addr;
+        o_frontend_command_bc3.col_addr = scheduled_request_fifo_out.col_addr;
     end
 end
 
-always_ff @( posedge i_clk or negedge i_rst_n ) 
+
+// always_ff @( posedge i_clk or negedge i_rst_n ) 
+// begin : O_FRONTEND_WRITE_DATA
+    // if(!i_rst_n) 
+    // begin
+        // o_frontend_write_data_bc0 <= 0;
+        // o_frontend_write_data_bc1 <= 0;
+        // o_frontend_write_data_bc2 <= 0;
+        // o_frontend_write_data_bc3 <= 0;
+    // end
+    // else
+    // begin
+        // o_frontend_write_data_bc0 <= scheduled_write_data_fifo_out;
+        // o_frontend_write_data_bc1 <= scheduled_write_data_fifo_out;
+        // o_frontend_write_data_bc2 <= scheduled_write_data_fifo_out;
+        // o_frontend_write_data_bc3 <= scheduled_write_data_fifo_out;
+    // end
+// end
+always_comb
 begin : O_FRONTEND_WRITE_DATA
     if(!i_rst_n) 
     begin
-        o_frontend_write_data_bc0 <= 0;
-        o_frontend_write_data_bc1 <= 0;
-        o_frontend_write_data_bc2 <= 0;
-        o_frontend_write_data_bc3 <= 0;
+        o_frontend_write_data_bc0 = 0;
+        o_frontend_write_data_bc1 = 0;
+        o_frontend_write_data_bc2 = 0;
+        o_frontend_write_data_bc3 = 0;
     end
     else
     begin
-        o_frontend_write_data_bc0 <= scheduled_write_data_fifo_out;
-        o_frontend_write_data_bc1 <= scheduled_write_data_fifo_out;
-        o_frontend_write_data_bc2 <= scheduled_write_data_fifo_out;
-        o_frontend_write_data_bc3 <= scheduled_write_data_fifo_out;
+        o_frontend_write_data_bc0 = scheduled_write_data_fifo_out;
+        o_frontend_write_data_bc1 = scheduled_write_data_fifo_out;
+        o_frontend_write_data_bc2 = scheduled_write_data_fifo_out;
+        o_frontend_write_data_bc3 = scheduled_write_data_fifo_out;
     end
 end
 

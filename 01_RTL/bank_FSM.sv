@@ -37,18 +37,18 @@ input clk ;
 input wdata_fifo_full_flag ;
 
 input  [`FSM_WIDTH1-1:0] state ;
-output bank_state_t ba_state ;
+output [`FSM_WIDTH2-1:0] ba_state ;
 output ba_busy ;
 output [`ADDR_BITS-1:0] ba_addr;
 output ba_issue ;
-output process_cmd_t process_cmd ;
+output [2:0]process_cmd ;
 output bank_refresh_completed ;
 output cmd_received_f ;
 
 import usertype::*;
 
 reg [4:0]ba_counter_nxt,ba_counter ;
-bank_state_t ba_state_nxt;
+bank_state_t ba_state,ba_state_nxt;
 
 reg ba_busy ;
 reg [`ADDR_BITS-1:0] ba_addr;
@@ -70,6 +70,7 @@ wire [`ADDR_BITS-1:0]row_addr = command_in.row_addr;
 wire [`ADDR_BITS-1:0]col_addr = command_in.col_addr;
 wire [`BA_BITS-1:0]bank = command_in.bank_addr ;
 reg [`ADDR_BITS-1:0]col_addr_t ;
+process_cmd_t process_cmd ;
 
 logic[`ROW_BITS-1:0] tREFI_period_counter;
 
@@ -191,9 +192,10 @@ begin
   begin
   case(ba_state)
    B_INITIAL    : ba_state_nxt = (state == FSM_IDLE) ? B_IDLE : B_INITIAL ;
-   B_IDLE       :
+   B_IDLE       : 
+                  // During the IDLE state, simply enter the REFRESH CHECK state,since no row buffer is opened
                   if(refresh_flag||refresh_bit_f)
-                    ba_state_nxt = B_REFRESH_CHECK ; // During the IDLE state, simply enter the REFRESH CHECK state
+                    ba_state_nxt = B_REFRESH_CHECK ; 
                   else if(receive_command_handshake_f)
                      ba_state_nxt = B_ACTIVE ;
                    else
@@ -207,7 +209,7 @@ begin
 
    B_ACT_STANDBY : // Can only receive command in standby mode
                     if(refresh_flag||refresh_bit_f) //Needs to first precharge before refresh
-                      ba_state_nxt = B_PRE;
+                      ba_state_nxt = B_PREA;
                     else if(receive_command_handshake_f)
                          if(row_buffer_hits_f)// Row buffer hits
 		                       ba_state_nxt = (command_in.r_w == READ) ? B_READ : B_WRITE ;
@@ -223,12 +225,10 @@ begin
                    ba_state_nxt = B_PRE ;
                  else // Open row policy
                    ba_state_nxt = B_ACT_STANDBY ;
-
+   B_PREA:
+              ba_state_nxt = B_REFRESH_CHECK;
    B_PRE      :
-              if(refresh_bit_f)
-                ba_state_nxt = B_REFRESH_CHECK;
-                //auto-precharge is on !, Since due to row buffer conflict, we need to precharge and goes to the B_ACT_CHECK state instead of the IDLE state
-              else if(command_buf.auto_precharge==1'b1 && row_buffer_conflict_flag_ff == 1'b0)
+              if(command_buf.auto_precharge==1'b1 && row_buffer_conflict_flag_ff == 1'b0)
                   ba_state_nxt = B_IDLE ;
               else
                 ba_state_nxt = B_ACTIVE ;

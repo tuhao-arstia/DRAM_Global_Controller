@@ -1,14 +1,14 @@
-// `define ALL_ROW_BUFFER_CONFLICTS
+`define ALL_SAME_ADDR_HIT_PATTERN
 // `define ZIGZAG_PATTERN
-// `define CONSECUTIVE_READ_WRITE
 // `define READ_WRITE_INTERLEAVE
-// `define ALL_ROW_BUFFER_HITS_PATTERN_SAME_ADDR
+// `define CONSECUTIVE_READ_WRITE
+// `define ALL_ROW_BUFFER_CONFLICTS
 
-`ifdef ALL_ROW_BUFFER_HITS_PATTERN_SAME_ADDR
+`ifdef ALL_SAME_ADDR_HIT_PATTERN
 	`define BEGIN_TEST_ROW 0
-	`define END_TEST_ROW   625
+	`define END_TEST_ROW   64
 	`define BEGIN_TEST_COL 0
-	`define END_TEST_COL 16
+	`define END_TEST_COL 64
 	`define TEST_ROW_STRIDE 0 // Must be a multiple of 2
 	`define TEST_COL_STRIDE 0 // Must be a multiple of 2
 `elsif ZIGZAG_PATTERN
@@ -41,15 +41,15 @@
 	`define TEST_COL_STRIDE 16 // Must be a multiple of 2
 `else
 	`define BEGIN_TEST_ROW 0
-	`define END_TEST_ROW   16
+	`define END_TEST_ROW   32
 	`define BEGIN_TEST_COL 0
-	`define END_TEST_COL 16
+	`define END_TEST_COL 32
 	`define TEST_ROW_STRIDE 1 // Must be a multiple of 2
 	`define TEST_COL_STRIDE 1 // Must be a multiple of 2
 `endif
 
-`ifdef ALL_ROW_BUFFER_HITS_PATTERN_SAME_ADDR
-	`define TOTAL_READ_TO_TEST ((`END_TEST_ROW-`BEGIN_TEST_ROW)*(`END_TEST_COL-`BEGIN_TEST_COL)) * 4
+`ifdef ALL_SAME_ADDR_HIT_PATTERN
+	`define TOTAL_READ_TO_TEST ((`END_TEST_ROW-`BEGIN_TEST_ROW)*(`END_TEST_COL-`BEGIN_TEST_COL)) 
 `elsif READ_WRITE_INTERLEAVE
 	`define TOTAL_READ_TO_TEST ((`END_TEST_ROW-`BEGIN_TEST_ROW)*(`END_TEST_COL-`BEGIN_TEST_COL)) * 4
 `else
@@ -142,6 +142,7 @@ integer total_read_to_test_count;
 integer test_row_begin;
 integer test_row_stride;
 integer test_col_stride;
+
 wire all_data_read_f = read_data_count == `TOTAL_READ_TO_TEST;
 
 integer setup_done;
@@ -157,6 +158,7 @@ typedef enum integer {
 
 pattern_type_t pattern_type;
 
+integer i_pat;
 integer pattern_num_cnt;
 integer total_cmd_to_test;
 
@@ -204,36 +206,40 @@ begin
 
 	$display("Toatl number of commands to test: %d",total_cmd_to_test);
 
-	`ifdef ALL_ROW_BUFFER_HITS_PATTERN_SAME_ADDR
+	`ifdef ALL_SAME_ADDR_HIT_PATTERN
 	$display("==========================================================================");
     $display("= Start to Create ALL ROW BUFFER HITS on address 0  Patterns             =");
     $display("==========================================================================");
 	debug_on = 1;
-	for(rr=0;rr<(`TOTAL_CMD / `TOTAL_BANK);rr=rr+1)
+	for(rr=0;rr<`TOTAL_CMD;rr=rr+1)
 	begin
-		for(bb=0;bb<`TOTAL_BANK;bb=bb+1)begin
-			row_addr = 0;
-			col_addr = 0;
-			// Command assignements
-			if(rr>=((`TOTAL_CMD / `TOTAL_BANK)/2))
-				command_temp_in.op_type   = OP_READ;
-			else
-				command_temp_in.op_type   = OP_WRITE;
+		
+		row_addr = 0;
+		col_addr = 0;
+        bb = 0;
+		// Command assignements
+		if(rr>=(`TOTAL_CMD/2))
+			command_temp_in.op_type   = OP_READ;
+		else
+			command_temp_in.op_type   = OP_WRITE;
 
-			command_temp_in.data_type = DATA_TYPE_WEIGHTS;
-			command_temp_in.row_addr  = row_addr;
-			command_temp_in.col_addr  = col_addr;
-			command_temp_in.bank_addr = bb;
+		command_temp_in.data_type = DATA_TYPE_WEIGHTS;
+		command_temp_in.row_addr  = row_addr;
+		command_temp_in.col_addr  = col_addr;
+		command_temp_in.bank_addr = 0;
 
-			command_table[cmd_count]=command_temp_in;
-			write_data_table[wdata_count]  = rr;
+		command_table[cmd_count]=command_temp_in;
+		write_data_table[wdata_count]  = rr;
 
-			if(command_temp_in.op_type == OP_WRITE)
-				mem[row_addr][col_addr][bb] = rr;
+		if(command_temp_in.op_type == OP_WRITE)
+        begin
+            // $display("write pattern rr = %2d",rr) ;
+			mem[row_addr][col_addr][bb] = rr;
+            // $display("value:%128h",mem[row_addr][col_addr][bb]) ;
+        end
 
-			cmd_count=cmd_count+1 ;
-			wdata_count=wdata_count+1 ;
-		end
+		cmd_count=cmd_count+1 ;
+		wdata_count=wdata_count+1 ;
 	end
 
 	`elsif READ_WRITE_INTERLEAVE
@@ -277,6 +283,7 @@ begin
     $display("========================================");
     $display("= Start to write the initial data!     =");
     $display("========================================");
+    
 	for(ra=0;ra<1;ra=ra+1) begin
 		for(rr=test_row_begin;rr<test_row_end;rr=rr+test_row_stride) begin
 			for(cc=0;cc<`TOTAL_COL;cc=cc+test_col_stride) begin
@@ -425,18 +432,19 @@ begin
 	//===========================
 	//    CHECK RESULT         //
 	//===========================
-	`ifdef ALL_ROW_BUFFER_HITS_PATTERN_SAME_ADDR
-		for(rr_x = 0;rr_x<(`TOTAL_CMD / `TOTAL_BANK);rr_x=rr_x+1)begin
-			for(bb_x=0;bb_x<`TOTAL_BANK;bb_x=bb_x+1)begin
-				cc_x = 0;
-				if(mem[rr_x][cc_x][bb_x] !== mem_back[rr_x][cc_x][bb_x]) begin
-					$display("mem[%2d][%2d][%2d] ACCESS FAIL ! , mem=%128h , mem_back=%128h",rr_x,cc_x,bb_x,mem[rr_x][cc_x][bb_x],mem_back[rr_x][cc_x][bb_x]) ;
-					total_error=total_error+1;
-				end
-				else
-					$display("mem[%2d][%2d][%2d] ACCESS SUCCESS ! ",rr_x,cc_x,bb_x) ;
+	`ifdef ALL_SAME_ADDR_HIT_PATTERN
+        // i_pat = 0;
+		// for(i_pat = 0;i_pat<`TOTAL_CMD/2;i_pat=i_pat+1)begin
+            rr_x = 0;
+            cc_x = 0;
+			bb_x = 0;
+			if(mem[rr_x][cc_x][bb_x] !== mem_back[rr_x][cc_x][bb_x]) begin
+				$display("mem[%2d][%2d][%2d] ACCESS FAIL ! , mem=%128h , mem_back=%128h",rr_x,cc_x,bb_x,mem[rr_x][cc_x][bb_x],mem_back[rr_x][cc_x][bb_x]) ;
+				total_error=total_error+1;
 			end
-		end
+			else
+				$display("mem[%2d][%2d][%2d] ACCESS SUCCESS ! ",rr_x,cc_x,bb_x) ;
+		// end
 	`elsif READ_WRITE_INTERLEAVE
 		rr_x = 0;
 		cc_x = 0;
@@ -521,6 +529,10 @@ begin: LATENCY_COUNTER
 		latency_counter<=1;
 	else if(latency_counter_lock==1'b0 && all_data_read_f == 1'b0)
 		latency_counter<=latency_counter + 1;
+
+	if(latency_counter % 100000 == 0) begin
+		$display("CLK TICK: %d",latency_counter);
+	end
 end
 
 logic[15:0] stall_counter_ff;
@@ -542,11 +554,15 @@ always@(posedge i_clk or negedge i_rst_n) begin
         i_command <= 'd0;
         i_command_valid <= 1;
         i_write_data <= 'd0;
+    end else if(i == `TOTAL_CMD) begin
+        i_command <= 'd0;
+        i_command_valid <= 0;
+        i_write_data <= 'd0;
     end else begin
         if(command_sent_handshake_f) begin
         	if(i==`TOTAL_CMD-1) begin
         	    i_command <= 0 ;
-        	    i<=i ;
+        	    i<=i+1;
         	    i_command_valid<=0 ;
         	    i_write_data <= 0 ;
         	end
@@ -576,9 +592,9 @@ always@(posedge i_clk or negedge i_rst_n) begin
 
         end
         else begin
-          i_command <= i_command;
-          i<=i ;
-          i_command_valid<=1 ;
+            i_command <= i_command;
+            i<=i ;
+            i_command_valid<=1 ;
         end
     end
 end
@@ -616,13 +632,21 @@ always@(negedge i_clk or negedge i_rst_n) begin
 	end
 end
 
-always@(negedge i_clk or negedge i_rst_n) begin
-	if(~i_rst_n)begin
-	  bb_back <= 0 ;
-	end
-	else if(o_read_data_valid==1 && debug_on==1)
-	    bb_back <= (bb_back + 1) % `TOTAL_BANK ;
-end
+`ifdef ALL_SAME_ADDR_HIT_PATTERN
+    always@(negedge i_clk or negedge i_rst_n) begin
+    	if(~i_rst_n)begin
+    	  bb_back <= 0 ;
+    	end
+    end
+`else
+    always@(negedge i_clk or negedge i_rst_n) begin
+    	if(~i_rst_n)begin
+    	  bb_back <= 0 ;
+    	end
+    	else if(o_read_data_valid==1 && debug_on==1)
+    	    bb_back <= (bb_back + 1) % `TOTAL_BANK ;
+    end
+`endif
 
 
 always@(negedge i_clk or negedge i_rst_n) begin
@@ -635,14 +659,13 @@ else begin
 end
 end
 
-initial begin
-//   #(`TOTAL_SIM_CYCLE*`CLK_DEFINE);
-    #(`CLK_DEFINE * 100000)
-  $display("=====================================") ;
-  $display(" MAX SIMULATION CYCLES REACHED") ;
-  $display("=====================================") ;
-  $finish;
-end
+// initial begin
+    // #(`CLK_DEFINE * 100000)
+//   $display("=====================================") ;
+//   $display(" MAX SIMULATION CYCLES REACHED") ;
+//   $display("=====================================") ;
+//   $finish;
+// end
 
 
 endmodule

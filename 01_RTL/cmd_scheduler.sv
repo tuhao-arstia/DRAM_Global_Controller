@@ -146,7 +146,7 @@ end
 
 
 always_comb begin: SCH_ADDR_ISSUE_BLOCK
-if(ba0_state == B_ACTIVE || ba0_state == B_READ || ba0_state == B_WRITE || ba0_state == B_PRE || ba0_state == B_REFRESH_CHECK)
+if(ba0_state == B_ACTIVE || ba0_state == B_READ || ba0_state == B_WRITE || ba0_state == B_PRE || ba0_state == B_REFRESH_CHECK||ba0_state == B_PREA)
   if(isu_fifo_full == 1'b0)
     {f_ba_state,sch_addr,sch_bank,sch_issue} = {ba0_info_in.bank_state,ba0_info_in.addr,3'd0,1'b1} ;
   else
@@ -171,6 +171,8 @@ case(f_ba_state)
   B_READ   : sch_command = ATCMD_READ ;
   B_WRITE  : sch_command = ATCMD_WRITE ;
   B_PRE    : sch_command = ATCMD_PRECHARGE ;
+  //refresh PRE
+  B_PREA   : sch_command = ATCMD_PREA ;
   // Add auto-precharge commands
   B_READA  : sch_command = ATCMD_RDA ;
   B_WRITEA : sch_command = ATCMD_WRA ;

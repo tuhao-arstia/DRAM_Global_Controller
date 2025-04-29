@@ -1,6 +1,7 @@
 `timescale 1ns / 10ps
 `include "frontend_cmd_definition_pkg.sv"
-`include "PATTERN.sv"
+// `include "PATTERN.sv"
+`include "PATTERN_new.sv"
 
 `ifdef RTL
     `include "Global_Controller.sv"
@@ -21,9 +22,9 @@ module TESTBED;
 
 initial begin
     `ifdef RTL
-        $fsdbDumpfile("Global_Controller.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
+        // $fsdbDumpfile("Global_Controller.fsdb");
+        // $fsdbDumpvars(0,"+all");
+        // $fsdbDumpSVA;
     `endif
     `ifdef GATE
         $sdf_annotate("Global_Controller_SYN.sdf", I_Global_Controller);

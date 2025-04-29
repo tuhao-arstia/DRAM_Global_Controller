@@ -38,7 +38,7 @@ input refresh_flag;
 output [4:0]tP_ba_counter ;
 output [5:0]tRAS_counter;
 output [`ROW_BITS-1:0]tREF_counter;
-output [2:0]recode;
+output recode_state_t recode;
 
 
 main_state_t state_nxt_i;
@@ -52,12 +52,13 @@ end
 reg [`ROW_BITS-1:0] tREF_counter;
 reg [4:0]tP_ba_counter ;
 reg [5:0]tRAS_counter; //purpose : prevent tRC and tRAS violation
-recode_state_t recode;       //1 : recode write-to-precharge ;   prevent tWR  violation 
-                       //2 : recode precharge-to-active ;  prevent tRP  violation
-                       //3 : recode active-to-read/write ; prevent tRCD violation
-                       //4 : recode read-to-precharge ;    prevent tRTP violation
-                       //5 : recode write-to-active with auto-precharge
-                       //6 : recode read-to-active with auto-precharge 
+// recode_state_t recode;       
+//1 : recode write-to-precharge ;   prevent tWR  violation 
+//2 : recode precharge-to-active ;  prevent tRP  violation
+//3 : recode active-to-read/write ; prevent tRCD violation
+//4 : recode read-to-precharge ;    prevent tRTP violation
+//5 : recode write-to-active with auto-precharge
+//6 : recode read-to-active with auto-precharge 
 always_ff@(posedge clk or negedge rst_n) begin
 if(~rst_n)
   tP_ba_counter <= 0 ;
@@ -92,7 +93,7 @@ end
 always_ff@(posedge clk or negedge rst_n) 
 begin: RECODE_LOGIC
 if(~rst_n)
-  recode <= 0 ;
+  recode <= CODE_IDLE ;
 else
   case(state_nxt)
     // FSM_WRITE: recode <= (f_bank==number)?(auto_pre)? CODE_WRITE_TO_ACTIVE : CODE_WRITE_TO_PRECHARGE : recode ;

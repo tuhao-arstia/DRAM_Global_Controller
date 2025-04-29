@@ -37,18 +37,19 @@ input clk ;
 input wdata_fifo_full_flag ;
 
 input  [`FSM_WIDTH1-1:0] state ;
-output [`FSM_WIDTH2-1:0] ba_state ;
+output bank_state_t ba_state ;
 output ba_busy ;
 output [`ADDR_BITS-1:0] ba_addr;
 output ba_issue ;
-output [2:0]process_cmd ;
+output process_cmd_t process_cmd ;
 output bank_refresh_completed ;
 output cmd_received_f ;
 
 import usertype::*;
 
 reg [4:0]ba_counter_nxt,ba_counter ;
-bank_state_t ba_state,ba_state_nxt;
+// bank_state_t ba_state;
+bank_state_t ba_state_nxt;
 
 reg ba_busy ;
 reg [`ADDR_BITS-1:0] ba_addr;
@@ -70,7 +71,7 @@ wire [`ADDR_BITS-1:0]row_addr = command_in.row_addr;
 wire [`ADDR_BITS-1:0]col_addr = command_in.col_addr;
 wire [`BA_BITS-1:0]bank = command_in.bank_addr ;
 reg [`ADDR_BITS-1:0]col_addr_t ;
-process_cmd_t process_cmd ;
+// process_cmd_t process_cmd ;
 
 logic[`ROW_BITS-1:0] tREFI_period_counter;
 

@@ -1,17 +1,14 @@
 `timescale 1ns / 10ps
 `include "frontend_cmd_definition_pkg.sv"
-// `include "PATTERN.sv"
-`include "PATTERN_new.sv"
+`include "PATTERN.sv"
 
 `ifdef RTL
-    `include "Global_Controller.sv"
-    `include "Backend_Controller.sv"
+    `include "DRAM_Controller.sv"
     `include "MEM_PAD.sv"
     `include "ddr3.sv"
 `endif
 `ifdef GATE
-    `include "Global_Controller_SYN.sv"
-    `include "Backend_Controller_SYN.sv"
+    `include "DRAM_Controller_SYN.sv"
     `include "MEM_PAD.sv"
     `include "ddr3.sv"
 `endif
@@ -22,65 +19,30 @@ module TESTBED;
 
 initial begin
     `ifdef RTL
-        // $fsdbDumpfile("Global_Controller.fsdb");
+        // $fsdbDumpfile("DRAM_Controller.fsdb");
         // $fsdbDumpvars(0,"+all");
         // $fsdbDumpSVA;
     `endif
     `ifdef GATE
-        $sdf_annotate("Global_Controller_SYN.sdf", I_Global_Controller);
-        $fsdbDumpfile("Global_Controller_SYN.fsdb");
+        $sdf_annotate("DRAM_Controller_SYN.sdf", I_DRAM_Controller_SYN);
+        $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
         $fsdbDumpvars(0,"+all");
         $fsdbDumpSVA;
     `endif
 end
 
+logic power_on_rst_n;
 logic clk;
 logic clk2;
-logic rst_n;
 
-// Global Controller Signals(Core-GC/ GC-BC0/ GC-BC1/ GC-BC2/ GC-BC3)
+// Global Controller Signals(Core-GC)
 logic core_command_valid;
 frontend_command_t core_command;
 logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] core_write_data;
-logic controller_ready;
+logic global_controller_ready;
 
 logic read_data_valid;
 logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] read_data;
-
-logic backend_controller_ready_bc0;
-logic backend_controller_ready_bc1;
-logic backend_controller_ready_bc2;
-logic backend_controller_ready_bc3;
-
-logic frontend_command_valid_bc0;
-logic frontend_command_valid_bc1;
-logic frontend_command_valid_bc2;
-logic frontend_command_valid_bc3;
-
-backend_command_t frontend_command_bc0;
-backend_command_t frontend_command_bc1;
-backend_command_t frontend_command_bc2;
-backend_command_t frontend_command_bc3;
-
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc0;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc1;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc2;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] frontend_write_data_bc3;
-
-logic backend_controller_ren_bc0;
-logic backend_controller_ren_bc1;
-logic backend_controller_ren_bc2;
-logic backend_controller_ren_bc3;
-
-logic returned_data_valid_bc0;
-logic returned_data_valid_bc1;
-logic returned_data_valid_bc2;
-logic returned_data_valid_bc3;
-
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data_bc0;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data_bc1;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data_bc2;
-logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] returned_data_bc3;
 
 // Backend Controller to DDR3/MEM Signals
 // Declare DDR3 signals for each backend controller
@@ -275,231 +237,221 @@ wire pad_ck_n_bc1;
 wire pad_ck_n_bc2;
 wire pad_ck_n_bc3;
 
-// Instantiate the Global Controller module
-Global_Controller I_Global_Controller (
-    .i_clk(clk),
-    .i_rst_n(rst_n),
+// Instantiate the DRAM Controller module
+`ifdef RTL
+DRAM_Controller u_DRAM_Controller (
+    .power_on_rst_n(power_on_rst_n),
+    .clk(clk),
+    .clk2(clk2),
 
-    .i_command_valid(core_command_valid),
-    .i_command(core_command),
-    .i_write_data(core_write_data),
-    .o_controller_ready(controller_ready),
+    //=== Interface with Core ===
+    .command_valid(core_command_valid),
+    .command(core_command),
+    .write_data(core_write_data),
+    .controller_ready(global_controller_ready),
 
-    .o_read_data_valid(read_data_valid),
-    .o_read_data(read_data),
+    .read_data_valid(read_data_valid),
+    .read_data(read_data),
 
-    .i_backend_controller_ready_bc0(backend_controller_ready_bc0),
-    .i_backend_controller_ready_bc1(backend_controller_ready_bc1),
-    .i_backend_controller_ready_bc2(backend_controller_ready_bc2),
-    .i_backend_controller_ready_bc3(backend_controller_ready_bc3),
+    //=== I/O from DDR3 interface ===
+    .rst_n_0(ddr3_rst_n_bc0),
+    .cke_0(ddr3_cke_bc0),
+    .cs_n_0(ddr3_cs_n_bc0),
+    .ras_n_0(ddr3_ras_n_bc0),
+    .cas_n_0(ddr3_cas_n_bc0),
+    .we_n_0(ddr3_we_n_bc0),
+    .dm_tdqs_in_0(ddr3_dm_tdqs_in_bc0),
+    .dm_tdqs_out_0(ddr3_dm_tdqs_out_bc0),
+    .ba_0(ddr3_ba_bc0),
+    .addr_0(ddr3_addr_bc0),
+    .data_in_0(ddr3_data_in_bc0),
+    .data_out_0(ddr3_data_out_bc0),
+    .data_all_in_0(ddr3_data_all_in_bc0),
+    .data_all_out_0(ddr3_data_all_out_bc0),
+    .dqs_in_0(ddr3_dqs_in_bc0),
+    .dqs_out_0(ddr3_dqs_out_bc0),
+    .dqs_n_in_0(ddr3_dqs_n_in_bc0),
+    .dqs_n_out_0(ddr3_dqs_n_out_bc0),
+    .tdqs_n_0(ddr3_tdqs_n_bc0),
+    .odt_0(ddr3_odt_bc0),
+    .ddr3_rw_0(ddr3_rw_bc0),
 
-    .o_frontend_command_valid_bc0(frontend_command_valid_bc0),
-    .o_frontend_command_valid_bc1(frontend_command_valid_bc1),
-    .o_frontend_command_valid_bc2(frontend_command_valid_bc2),
-    .o_frontend_command_valid_bc3(frontend_command_valid_bc3),
+    .rst_n_1(ddr3_rst_n_bc1),
+    .cke_1(ddr3_cke_bc1),
+    .cs_n_1(ddr3_cs_n_bc1),
+    .ras_n_1(ddr3_ras_n_bc1),
+    .cas_n_1(ddr3_cas_n_bc1),
+    .we_n_1(ddr3_we_n_bc1),
+    .dm_tdqs_in_1(ddr3_dm_tdqs_in_bc1),
+    .dm_tdqs_out_1(ddr3_dm_tdqs_out_bc1),
+    .ba_1(ddr3_ba_bc1),
+    .addr_1(ddr3_addr_bc1),
+    .data_in_1(ddr3_data_in_bc1),
+    .data_out_1(ddr3_data_out_bc1),
+    .data_all_in_1(ddr3_data_all_in_bc1),
+    .data_all_out_1(ddr3_data_all_out_bc1),
+    .dqs_in_1(ddr3_dqs_in_bc1),
+    .dqs_out_1(ddr3_dqs_out_bc1),
+    .dqs_n_in_1(ddr3_dqs_n_in_bc1),
+    .dqs_n_out_1(ddr3_dqs_n_out_bc1),
+    .tdqs_n_1(ddr3_tdqs_n_bc1),
+    .odt_1(ddr3_odt_bc1),
+    .ddr3_rw_1(ddr3_rw_bc1),
 
-    .o_frontend_command_bc0(frontend_command_bc0),
-    .o_frontend_command_bc1(frontend_command_bc1),
-    .o_frontend_command_bc2(frontend_command_bc2),
-    .o_frontend_command_bc3(frontend_command_bc3),
+    .rst_n_2(ddr3_rst_n_bc2),
+    .cke_2(ddr3_cke_bc2),
+    .cs_n_2(ddr3_cs_n_bc2),
+    .ras_n_2(ddr3_ras_n_bc2),
+    .cas_n_2(ddr3_cas_n_bc2),
+    .we_n_2(ddr3_we_n_bc2),
+    .dm_tdqs_in_2(ddr3_dm_tdqs_in_bc2),
+    .dm_tdqs_out_2(ddr3_dm_tdqs_out_bc2),
+    .ba_2(ddr3_ba_bc2),
+    .addr_2(ddr3_addr_bc2),
+    .data_in_2(ddr3_data_in_bc2),
+    .data_out_2(ddr3_data_out_bc2),
+    .data_all_in_2(ddr3_data_all_in_bc2),
+    .data_all_out_2(ddr3_data_all_out_bc2),
+    .dqs_in_2(ddr3_dqs_in_bc2),
+    .dqs_out_2(ddr3_dqs_out_bc2),
+    .dqs_n_in_2(ddr3_dqs_n_in_bc2),
+    .dqs_n_out_2(ddr3_dqs_n_out_bc2),
+    .tdqs_n_2(ddr3_tdqs_n_bc2),
+    .odt_2(ddr3_odt_bc2),
+    .ddr3_rw_2(ddr3_rw_bc2),
 
-    .o_frontend_write_data_bc0(frontend_write_data_bc0),
-    .o_frontend_write_data_bc1(frontend_write_data_bc1),
-    .o_frontend_write_data_bc2(frontend_write_data_bc2),
-    .o_frontend_write_data_bc3(frontend_write_data_bc3),
-
-    .o_backend_controller_ren_bc0(backend_controller_ren_bc0),
-    .o_backend_controller_ren_bc1(backend_controller_ren_bc1),
-    .o_backend_controller_ren_bc2(backend_controller_ren_bc2),
-    .o_backend_controller_ren_bc3(backend_controller_ren_bc3),
-
-    .i_returned_data_valid_bc0(returned_data_valid_bc0),
-    .i_returned_data_valid_bc1(returned_data_valid_bc1),
-    .i_returned_data_valid_bc2(returned_data_valid_bc2),
-    .i_returned_data_valid_bc3(returned_data_valid_bc3),
-
-    .i_returned_data_bc0(returned_data_bc0),
-    .i_returned_data_bc1(returned_data_bc1),
-    .i_returned_data_bc2(returned_data_bc2),
-    .i_returned_data_bc3(returned_data_bc3)
+    .rst_n_3(ddr3_rst_n_bc3),
+    .cke_3(ddr3_cke_bc3),
+    .cs_n_3(ddr3_cs_n_bc3),
+    .ras_n_3(ddr3_ras_n_bc3),
+    .cas_n_3(ddr3_cas_n_bc3),
+    .we_n_3(ddr3_we_n_bc3),
+    .dm_tdqs_in_3(ddr3_dm_tdqs_in_bc3),
+    .dm_tdqs_out_3(ddr3_dm_tdqs_out_bc3),
+    .ba_3(ddr3_ba_bc3),
+    .addr_3(ddr3_addr_bc3),
+    .data_in_3(ddr3_data_in_bc3),
+    .data_out_3(ddr3_data_out_bc3),
+    .data_all_in_3(ddr3_data_all_in_bc3),
+    .data_all_out_3(ddr3_data_all_out_bc3),
+    .dqs_in_3(ddr3_dqs_in_bc3),
+    .dqs_out_3(ddr3_dqs_out_bc3),
+    .dqs_n_in_3(ddr3_dqs_n_in_bc3),
+    .dqs_n_out_3(ddr3_dqs_n_out_bc3),
+    .tdqs_n_3(ddr3_tdqs_n_bc3),
+    .odt_3(ddr3_odt_bc3),
+    .ddr3_rw_3(ddr3_rw_bc3)
 );
+`endif
+`ifdef GATE
+DRAM_Controller_SYN u_DRAM_Controller_SYN (
+    .power_on_rst_n(power_on_rst_n),
+    .clk(clk),
+    .clk2(clk2),
 
-// Instantiate 4 Backend Controllers
-// Instantiate Backend Controller 0
-Backend_Controller I_BackendController_0(
-//== I/O from System ===============
-         .power_on_rst_n(rst_n),
-         .clk           (clk  ),
-         .clk2          (clk2 ),
-//==================================
+    //=== Interface with Core ===
+    .command_valid(core_command_valid),
+    .command(core_command),
+    .write_data(core_write_data),
+    .controller_ready(global_controller_ready),
 
-//== I/O from access command ========================================
-//Command Channel
-         .o_backend_controller_ready(backend_controller_ready_bc0),
-         .i_frontend_write_data     (frontend_write_data_bc0     ),
-         .i_frontend_command_valid  (frontend_command_valid_bc0  ),
-         .i_frontend_command        (frontend_command_bc0        ),
-//Returned data channel
-         .o_backend_read_data       (returned_data_bc0      ),
-         .o_backend_read_data_valid (returned_data_valid_bc0),
-         .i_backend_controller_ren  (backend_controller_ren_bc0),
-//===================================================================
-//=== I/O from pad interface ======
-         .rst_n       (ddr3_rst_n_bc0      ),
-         .cke         (ddr3_cke_bc0        ),
-         .cs_n        (ddr3_cs_n_bc0       ),
-         .ras_n       (ddr3_ras_n_bc0      ),
-         .cas_n       (ddr3_cas_n_bc0      ),
-         .we_n        (ddr3_we_n_bc0       ),
-         .dm_tdqs_in  (ddr3_dm_tdqs_in_bc0 ),
-         .dm_tdqs_out (ddr3_dm_tdqs_out_bc0),
-         .ba          (ddr3_ba_bc0         ),
-         .addr        (ddr3_addr_bc0       ),
-         .data_in     (ddr3_data_in_bc0    ),
-         .data_out    (ddr3_data_out_bc0   ),
-         .data_all_in (ddr3_data_all_in_bc0),
-         .data_all_out(ddr3_data_all_out_bc0),
-         .dqs_in      (ddr3_dqs_in_bc0     ),
-         .dqs_out     (ddr3_dqs_out_bc0    ),
-         .dqs_n_in    (ddr3_dqs_n_in_bc0   ),
-         .dqs_n_out   (ddr3_dqs_n_out_bc0  ),
-         .tdqs_n      (ddr3_tdqs_n_bc0     ),
-         .odt         (ddr3_odt_bc0        ),
-         .ddr3_rw     (ddr3_rw_bc0         )
+    .read_data_valid(read_data_valid),
+    .read_data(read_data),
+
+    //=== I/O from DDR3 interface ===
+    .rst_n_0(ddr3_rst_n_bc0),
+    .cke_0(ddr3_cke_bc0),
+    .cs_n_0(ddr3_cs_n_bc0),
+    .ras_n_0(ddr3_ras_n_bc0),
+    .cas_n_0(ddr3_cas_n_bc0),
+    .we_n_0(ddr3_we_n_bc0),
+    .dm_tdqs_in_0(ddr3_dm_tdqs_in_bc0),
+    .dm_tdqs_out_0(ddr3_dm_tdqs_out_bc0),
+    .ba_0(ddr3_ba_bc0),
+    .addr_0(ddr3_addr_bc0),
+    .data_in_0(ddr3_data_in_bc0),
+    .data_out_0(ddr3_data_out_bc0),
+    .data_all_in_0(ddr3_data_all_in_bc0),
+    .data_all_out_0(ddr3_data_all_out_bc0),
+    .dqs_in_0(ddr3_dqs_in_bc0),
+    .dqs_out_0(ddr3_dqs_out_bc0),
+    .dqs_n_in_0(ddr3_dqs_n_in_bc0),
+    .dqs_n_out_0(ddr3_dqs_n_out_bc0),
+    .tdqs_n_0(ddr3_tdqs_n_bc0),
+    .odt_0(ddr3_odt_bc0),
+    .ddr3_rw_0(ddr3_rw_bc0),
+
+    .rst_n_1(ddr3_rst_n_bc1),
+    .cke_1(ddr3_cke_bc1),
+    .cs_n_1(ddr3_cs_n_bc1),
+    .ras_n_1(ddr3_ras_n_bc1),
+    .cas_n_1(ddr3_cas_n_bc1),
+    .we_n_1(ddr3_we_n_bc1),
+    .dm_tdqs_in_1(ddr3_dm_tdqs_in_bc1),
+    .dm_tdqs_out_1(ddr3_dm_tdqs_out_bc1),
+    .ba_1(ddr3_ba_bc1),
+    .addr_1(ddr3_addr_bc1),
+    .data_in_1(ddr3_data_in_bc1),
+    .data_out_1(ddr3_data_out_bc1),
+    .data_all_in_1(ddr3_data_all_in_bc1),
+    .data_all_out_1(ddr3_data_all_out_bc1),
+    .dqs_in_1(ddr3_dqs_in_bc1),
+    .dqs_out_1(ddr3_dqs_out_bc1),
+    .dqs_n_in_1(ddr3_dqs_n_in_bc1),
+    .dqs_n_out_1(ddr3_dqs_n_out_bc1),
+    .tdqs_n_1(ddr3_tdqs_n_bc1),
+    .odt_1(ddr3_odt_bc1),
+    .ddr3_rw_1(ddr3_rw_bc1),
+
+    .rst_n_2(ddr3_rst_n_bc2),
+    .cke_2(ddr3_cke_bc2),
+    .cs_n_2(ddr3_cs_n_bc2),
+    .ras_n_2(ddr3_ras_n_bc2),
+    .cas_n_2(ddr3_cas_n_bc2),
+    .we_n_2(ddr3_we_n_bc2),
+    .dm_tdqs_in_2(ddr3_dm_tdqs_in_bc2),
+    .dm_tdqs_out_2(ddr3_dm_tdqs_out_bc2),
+    .ba_2(ddr3_ba_bc2),
+    .addr_2(ddr3_addr_bc2),
+    .data_in_2(ddr3_data_in_bc2),
+    .data_out_2(ddr3_data_out_bc2),
+    .data_all_in_2(ddr3_data_all_in_bc2),
+    .data_all_out_2(ddr3_data_all_out_bc2),
+    .dqs_in_2(ddr3_dqs_in_bc2),
+    .dqs_out_2(ddr3_dqs_out_bc2),
+    .dqs_n_in_2(ddr3_dqs_n_in_bc2),
+    .dqs_n_out_2(ddr3_dqs_n_out_bc2),
+    .tdqs_n_2(ddr3_tdqs_n_bc2),
+    .odt_2(ddr3_odt_bc2),
+    .ddr3_rw_2(ddr3_rw_bc2),
+
+    .rst_n_3(ddr3_rst_n_bc3),
+    .cke_3(ddr3_cke_bc3),
+    .cs_n_3(ddr3_cs_n_bc3),
+    .ras_n_3(ddr3_ras_n_bc3),
+    .cas_n_3(ddr3_cas_n_bc3),
+    .we_n_3(ddr3_we_n_bc3),
+    .dm_tdqs_in_3(ddr3_dm_tdqs_in_bc3),
+    .dm_tdqs_out_3(ddr3_dm_tdqs_out_bc3),
+    .ba_3(ddr3_ba_bc3),
+    .addr_3(ddr3_addr_bc3),
+    .data_in_3(ddr3_data_in_bc3),
+    .data_out_3(ddr3_data_out_bc3),
+    .data_all_in_3(ddr3_data_all_in_bc3),
+    .data_all_out_3(ddr3_data_all_out_bc3),
+    .dqs_in_3(ddr3_dqs_in_bc3),
+    .dqs_out_3(ddr3_dqs_out_bc3),
+    .dqs_n_in_3(ddr3_dqs_n_in_bc3),
+    .dqs_n_out_3(ddr3_dqs_n_out_bc3),
+    .tdqs_n_3(ddr3_tdqs_n_bc3),
+    .odt_3(ddr3_odt_bc3),
+    .ddr3_rw_3(ddr3_rw_bc3)
 );
-
-// Instantiate Backend Controller 1
-Backend_Controller I_BackendController_1(
-//== I/O from System ===============
-         .power_on_rst_n(rst_n),
-         .clk           (clk  ),
-         .clk2          (clk2 ),
-//==================================
-
-//== I/O from access command ========================================
-//Command Channel
-         .o_backend_controller_ready(backend_controller_ready_bc1),
-         .i_frontend_write_data     (frontend_write_data_bc1     ),
-         .i_frontend_command_valid  (frontend_command_valid_bc1  ),
-         .i_frontend_command        (frontend_command_bc1        ),
-//Returned data channel
-         .o_backend_read_data       (returned_data_bc1      ),
-         .o_backend_read_data_valid (returned_data_valid_bc1),
-         .i_backend_controller_ren  (backend_controller_ren_bc1),
-//===================================================================
-//=== I/O from pad interface ======
-         .rst_n       (ddr3_rst_n_bc1      ),
-         .cke         (ddr3_cke_bc1        ),
-         .cs_n        (ddr3_cs_n_bc1       ),
-         .ras_n       (ddr3_ras_n_bc1      ),
-         .cas_n       (ddr3_cas_n_bc1      ),
-         .we_n        (ddr3_we_n_bc1       ),
-         .dm_tdqs_in  (ddr3_dm_tdqs_in_bc1 ),
-         .dm_tdqs_out (ddr3_dm_tdqs_out_bc1),
-         .ba          (ddr3_ba_bc1         ),
-         .addr        (ddr3_addr_bc1       ),
-         .data_in     (ddr3_data_in_bc1    ),
-         .data_out    (ddr3_data_out_bc1   ),
-         .data_all_in (ddr3_data_all_in_bc1),
-         .data_all_out(ddr3_data_all_out_bc1),
-         .dqs_in      (ddr3_dqs_in_bc1     ),
-         .dqs_out     (ddr3_dqs_out_bc1    ),
-         .dqs_n_in    (ddr3_dqs_n_in_bc1   ),
-         .dqs_n_out   (ddr3_dqs_n_out_bc1  ),
-         .tdqs_n      (ddr3_tdqs_n_bc1     ),
-         .odt         (ddr3_odt_bc1        ),
-         .ddr3_rw     (ddr3_rw_bc1         )
-);
-
-// Instantiate Backend Controller 2
-Backend_Controller I_BackendController_2(
-//== I/O from System ===============
-         .power_on_rst_n(rst_n),
-         .clk           (clk  ),
-         .clk2          (clk2 ),
-//==================================
-
-//== I/O from access command ========================================
-//Command Channel
-         .o_backend_controller_ready(backend_controller_ready_bc2),
-         .i_frontend_write_data     (frontend_write_data_bc2     ),
-         .i_frontend_command_valid  (frontend_command_valid_bc2  ),
-         .i_frontend_command        (frontend_command_bc2        ),
-//Returned data channel
-         .o_backend_read_data       (returned_data_bc2      ),
-         .o_backend_read_data_valid (returned_data_valid_bc2),
-         .i_backend_controller_ren  (backend_controller_ren_bc2),
-//===================================================================
-//=== I/O from pad interface ======
-         .rst_n       (ddr3_rst_n_bc2      ),
-         .cke         (ddr3_cke_bc2        ),
-         .cs_n        (ddr3_cs_n_bc2       ),
-         .ras_n       (ddr3_ras_n_bc2      ),
-         .cas_n       (ddr3_cas_n_bc2      ),
-         .we_n        (ddr3_we_n_bc2       ),
-         .dm_tdqs_in  (ddr3_dm_tdqs_in_bc2 ),
-         .dm_tdqs_out (ddr3_dm_tdqs_out_bc2),
-         .ba          (ddr3_ba_bc2         ),
-         .addr        (ddr3_addr_bc2       ),
-         .data_in     (ddr3_data_in_bc2    ),
-         .data_out    (ddr3_data_out_bc2   ),
-         .data_all_in (ddr3_data_all_in_bc2),
-         .data_all_out(ddr3_data_all_out_bc2),
-         .dqs_in      (ddr3_dqs_in_bc2     ),
-         .dqs_out     (ddr3_dqs_out_bc2    ),
-         .dqs_n_in    (ddr3_dqs_n_in_bc2   ),
-         .dqs_n_out   (ddr3_dqs_n_out_bc2  ),
-         .tdqs_n      (ddr3_tdqs_n_bc2     ),
-         .odt         (ddr3_odt_bc2        ),
-         .ddr3_rw     (ddr3_rw_bc2         )
-);
-
-// Instantiate Backend Controller 3
-Backend_Controller I_BackendController_3(
-//== I/O from System ===============
-         .power_on_rst_n(rst_n),
-         .clk           (clk  ),
-         .clk2          (clk2 ),
-//==================================
-
-//== I/O from access command ========================================
-//Command Channel
-         .o_backend_controller_ready(backend_controller_ready_bc3),
-         .i_frontend_write_data     (frontend_write_data_bc3     ),
-         .i_frontend_command_valid  (frontend_command_valid_bc3  ),
-         .i_frontend_command        (frontend_command_bc3        ),
-//Returned data channel
-         .o_backend_read_data       (returned_data_bc3      ),
-         .o_backend_read_data_valid (returned_data_valid_bc3),
-         .i_backend_controller_ren  (backend_controller_ren_bc3),
-//===================================================================
-//=== I/O from pad interface ======
-         .rst_n       (ddr3_rst_n_bc3      ),
-         .cke         (ddr3_cke_bc3        ),
-         .cs_n        (ddr3_cs_n_bc3       ),
-         .ras_n       (ddr3_ras_n_bc3      ),
-         .cas_n       (ddr3_cas_n_bc3      ),
-         .we_n        (ddr3_we_n_bc3       ),
-         .dm_tdqs_in  (ddr3_dm_tdqs_in_bc3 ),
-         .dm_tdqs_out (ddr3_dm_tdqs_out_bc3),
-         .ba          (ddr3_ba_bc3         ),
-         .addr        (ddr3_addr_bc3       ),
-         .data_in     (ddr3_data_in_bc3    ),
-         .data_out    (ddr3_data_out_bc3   ),
-         .data_all_in (ddr3_data_all_in_bc3),
-         .data_all_out(ddr3_data_all_out_bc3),
-         .dqs_in      (ddr3_dqs_in_bc3     ),
-         .dqs_out     (ddr3_dqs_out_bc3    ),
-         .dqs_n_in    (ddr3_dqs_n_in_bc3   ),
-         .dqs_n_out   (ddr3_dqs_n_out_bc3  ),
-         .tdqs_n      (ddr3_tdqs_n_bc3     ),
-         .odt         (ddr3_odt_bc3        ),
-         .ddr3_rw     (ddr3_rw_bc3         )
-);
+`endif
 
 // Instantiate 4 MEM_PADs
 // Instantiate MEM_PAD 0
-MEM_PAD I_MEM_PAD_0(
+MEM_PAD u_MEM_PAD_0(
     //== I/O for Controller ===============
          .ddr3_rst_n       (ddr3_rst_n_bc0      ),
          .ddr3_cke         (ddr3_cke_bc0        ),
@@ -545,7 +497,7 @@ MEM_PAD I_MEM_PAD_0(
 );
 
 // Instantiate MEM_PAD 1
-MEM_PAD I_MEM_PAD_1(
+MEM_PAD u_MEM_PAD_1(
     //== I/O for Controller ===============
          .ddr3_rst_n       (ddr3_rst_n_bc1      ),
          .ddr3_cke         (ddr3_cke_bc1        ),
@@ -591,7 +543,7 @@ MEM_PAD I_MEM_PAD_1(
 );
 
 // Instantiate MEM_PAD 2
-MEM_PAD I_MEM_PAD_2(
+MEM_PAD u_MEM_PAD_2(
     //== I/O for Controller ===============
          .ddr3_rst_n       (ddr3_rst_n_bc2      ),
          .ddr3_cke         (ddr3_cke_bc2        ),
@@ -637,7 +589,7 @@ MEM_PAD I_MEM_PAD_2(
 );
 
 // Instantiate MEM_PAD 3
-MEM_PAD I_MEM_PAD_3(
+MEM_PAD u_MEM_PAD_3(
     //== I/O for Controller ===============
          .ddr3_rst_n       (ddr3_rst_n_bc3      ),
          .ddr3_cke         (ddr3_cke_bc3        ),
@@ -684,7 +636,7 @@ MEM_PAD I_MEM_PAD_3(
 
 // Instantiate 4 DDR3s
 // Instantiate DDR3 0
-ddr3 I_ddr3_0(
+ddr3 u_ddr3_0(
     .rst_n  (pad_rst_n_bc0  ),
     .ck     (pad_ck_bc0     ),
     .ck_n   (pad_ck_n_bc0   ),
@@ -705,7 +657,7 @@ ddr3 I_ddr3_0(
 );
 
 // Instantiate DDR3 1
-ddr3 I_ddr3_1(
+ddr3 u_ddr3_1(
     .rst_n  (pad_rst_n_bc1  ),
     .ck     (pad_ck_bc1     ),
     .ck_n   (pad_ck_n_bc1   ),
@@ -726,7 +678,7 @@ ddr3 I_ddr3_1(
 );
 
 // Instantiate DDR3 2
-ddr3 I_ddr3_2(
+ddr3 u_ddr3_2(
     .rst_n  (pad_rst_n_bc2  ),
     .ck     (pad_ck_bc2     ),
     .ck_n   (pad_ck_n_bc2   ),
@@ -747,7 +699,7 @@ ddr3 I_ddr3_2(
 );
 
 // Instantiate DDR3 3
-ddr3 I_ddr3_3(
+ddr3 u_ddr3_3(
     .rst_n  (pad_rst_n_bc3  ),
     .ck     (pad_ck_bc3     ),
     .ck_n   (pad_ck_n_bc3   ),
@@ -768,15 +720,16 @@ ddr3 I_ddr3_3(
 );
          
 // connect it with the pattern
-PATTERN I_PATTERN (
+// be careful with the port name
+PATTERN u_PATTERN (
     .i_clk(clk),
     .i_clk2(clk2),
-    .i_rst_n(rst_n),
+    .i_rst_n(power_on_rst_n),
 
     .i_command_valid(core_command_valid),
     .i_command(core_command),
     .i_write_data(core_write_data),
-    .o_controller_ready(controller_ready),
+    .o_controller_ready(global_controller_ready),
 
     .o_read_data_valid(read_data_valid),
     .o_read_data(read_data)

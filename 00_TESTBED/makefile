@@ -3,7 +3,7 @@
 ######################################
 # Set your desired file names
 ######################################
-top_design=Backend_Controller
+top_design=DRAM_Controller
 source_file="filelist.f"	# Name of your source file
 output_file="simv"      	# Desired output simulation file name
 log_file="vcs.log"      	# Desired log file name

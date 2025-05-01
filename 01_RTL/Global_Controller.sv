@@ -116,7 +116,7 @@ input logic [`GLOBAL_CONTROLLER_WORD_SIZE-1:0] i_returned_data_bc3;
 parameter write_data_width = `GLOBAL_CONTROLLER_WORD_SIZE;
 parameter command_width = `OP_BITS+`DATA_TYPE_BITS+`ROW_BITS+`COL_BITS+`BANK_BITS;
 parameter bank_addr_width = `BANK_BITS;
-parameter fifo_depth = 16;
+parameter fifo_depth = 4;
 parameter read_order_fifo_depth = 16;
 parameter ae_level = 1;
 parameter af_level = 1;

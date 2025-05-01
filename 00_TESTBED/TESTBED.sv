@@ -8,7 +8,7 @@
     `include "ddr3.sv"
 `endif
 `ifdef GATE
-    `include "DRAM_Controller_SYN.sv"
+    `include "DRAM_Controller_SYN.v"
     `include "MEM_PAD.sv"
     `include "ddr3.sv"
 `endif
@@ -24,10 +24,10 @@ initial begin
         // $fsdbDumpSVA;
     `endif
     `ifdef GATE
-        $sdf_annotate("DRAM_Controller_SYN.sdf", I_DRAM_Controller_SYN);
-        $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
+        $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
+        // $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
+        // $fsdbDumpvars(0,"+all");
+        // $fsdbDumpSVA;
     `endif
 end
 
@@ -238,7 +238,6 @@ wire pad_ck_n_bc2;
 wire pad_ck_n_bc3;
 
 // Instantiate the DRAM Controller module
-`ifdef RTL
 DRAM_Controller u_DRAM_Controller (
     .power_on_rst_n(power_on_rst_n),
     .clk(clk),
@@ -342,112 +341,6 @@ DRAM_Controller u_DRAM_Controller (
     .odt_3(ddr3_odt_bc3),
     .ddr3_rw_3(ddr3_rw_bc3)
 );
-`endif
-`ifdef GATE
-DRAM_Controller_SYN u_DRAM_Controller_SYN (
-    .power_on_rst_n(power_on_rst_n),
-    .clk(clk),
-    .clk2(clk2),
-
-    //=== Interface with Core ===
-    .command_valid(core_command_valid),
-    .command(core_command),
-    .write_data(core_write_data),
-    .controller_ready(global_controller_ready),
-
-    .read_data_valid(read_data_valid),
-    .read_data(read_data),
-
-    //=== I/O from DDR3 interface ===
-    .rst_n_0(ddr3_rst_n_bc0),
-    .cke_0(ddr3_cke_bc0),
-    .cs_n_0(ddr3_cs_n_bc0),
-    .ras_n_0(ddr3_ras_n_bc0),
-    .cas_n_0(ddr3_cas_n_bc0),
-    .we_n_0(ddr3_we_n_bc0),
-    .dm_tdqs_in_0(ddr3_dm_tdqs_in_bc0),
-    .dm_tdqs_out_0(ddr3_dm_tdqs_out_bc0),
-    .ba_0(ddr3_ba_bc0),
-    .addr_0(ddr3_addr_bc0),
-    .data_in_0(ddr3_data_in_bc0),
-    .data_out_0(ddr3_data_out_bc0),
-    .data_all_in_0(ddr3_data_all_in_bc0),
-    .data_all_out_0(ddr3_data_all_out_bc0),
-    .dqs_in_0(ddr3_dqs_in_bc0),
-    .dqs_out_0(ddr3_dqs_out_bc0),
-    .dqs_n_in_0(ddr3_dqs_n_in_bc0),
-    .dqs_n_out_0(ddr3_dqs_n_out_bc0),
-    .tdqs_n_0(ddr3_tdqs_n_bc0),
-    .odt_0(ddr3_odt_bc0),
-    .ddr3_rw_0(ddr3_rw_bc0),
-
-    .rst_n_1(ddr3_rst_n_bc1),
-    .cke_1(ddr3_cke_bc1),
-    .cs_n_1(ddr3_cs_n_bc1),
-    .ras_n_1(ddr3_ras_n_bc1),
-    .cas_n_1(ddr3_cas_n_bc1),
-    .we_n_1(ddr3_we_n_bc1),
-    .dm_tdqs_in_1(ddr3_dm_tdqs_in_bc1),
-    .dm_tdqs_out_1(ddr3_dm_tdqs_out_bc1),
-    .ba_1(ddr3_ba_bc1),
-    .addr_1(ddr3_addr_bc1),
-    .data_in_1(ddr3_data_in_bc1),
-    .data_out_1(ddr3_data_out_bc1),
-    .data_all_in_1(ddr3_data_all_in_bc1),
-    .data_all_out_1(ddr3_data_all_out_bc1),
-    .dqs_in_1(ddr3_dqs_in_bc1),
-    .dqs_out_1(ddr3_dqs_out_bc1),
-    .dqs_n_in_1(ddr3_dqs_n_in_bc1),
-    .dqs_n_out_1(ddr3_dqs_n_out_bc1),
-    .tdqs_n_1(ddr3_tdqs_n_bc1),
-    .odt_1(ddr3_odt_bc1),
-    .ddr3_rw_1(ddr3_rw_bc1),
-
-    .rst_n_2(ddr3_rst_n_bc2),
-    .cke_2(ddr3_cke_bc2),
-    .cs_n_2(ddr3_cs_n_bc2),
-    .ras_n_2(ddr3_ras_n_bc2),
-    .cas_n_2(ddr3_cas_n_bc2),
-    .we_n_2(ddr3_we_n_bc2),
-    .dm_tdqs_in_2(ddr3_dm_tdqs_in_bc2),
-    .dm_tdqs_out_2(ddr3_dm_tdqs_out_bc2),
-    .ba_2(ddr3_ba_bc2),
-    .addr_2(ddr3_addr_bc2),
-    .data_in_2(ddr3_data_in_bc2),
-    .data_out_2(ddr3_data_out_bc2),
-    .data_all_in_2(ddr3_data_all_in_bc2),
-    .data_all_out_2(ddr3_data_all_out_bc2),
-    .dqs_in_2(ddr3_dqs_in_bc2),
-    .dqs_out_2(ddr3_dqs_out_bc2),
-    .dqs_n_in_2(ddr3_dqs_n_in_bc2),
-    .dqs_n_out_2(ddr3_dqs_n_out_bc2),
-    .tdqs_n_2(ddr3_tdqs_n_bc2),
-    .odt_2(ddr3_odt_bc2),
-    .ddr3_rw_2(ddr3_rw_bc2),
-
-    .rst_n_3(ddr3_rst_n_bc3),
-    .cke_3(ddr3_cke_bc3),
-    .cs_n_3(ddr3_cs_n_bc3),
-    .ras_n_3(ddr3_ras_n_bc3),
-    .cas_n_3(ddr3_cas_n_bc3),
-    .we_n_3(ddr3_we_n_bc3),
-    .dm_tdqs_in_3(ddr3_dm_tdqs_in_bc3),
-    .dm_tdqs_out_3(ddr3_dm_tdqs_out_bc3),
-    .ba_3(ddr3_ba_bc3),
-    .addr_3(ddr3_addr_bc3),
-    .data_in_3(ddr3_data_in_bc3),
-    .data_out_3(ddr3_data_out_bc3),
-    .data_all_in_3(ddr3_data_all_in_bc3),
-    .data_all_out_3(ddr3_data_all_out_bc3),
-    .dqs_in_3(ddr3_dqs_in_bc3),
-    .dqs_out_3(ddr3_dqs_out_bc3),
-    .dqs_n_in_3(ddr3_dqs_n_in_bc3),
-    .dqs_n_out_3(ddr3_dqs_n_out_bc3),
-    .tdqs_n_3(ddr3_tdqs_n_bc3),
-    .odt_3(ddr3_odt_bc3),
-    .ddr3_rw_3(ddr3_rw_bc3)
-);
-`endif
 
 // Instantiate 4 MEM_PADs
 // Instantiate MEM_PAD 0

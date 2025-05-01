@@ -973,9 +973,16 @@ end
 
 // end
 
-always_comb
-begin:RD_BUF_ALL
-   RD_buf_all = (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
+// always_comb
+// begin:RD_BUF_ALL
+//    RD_buf_all = (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
+// end
+always@(posedge clk) begin: RD_BUF_ALL
+    if(dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) begin
+        RD_buf_all = data_all_in ;
+    end else begin
+        RD_buf_all = RD_buf_all ; 
+    end
 end
 
 // always@(negedge clk) begin:RD_TEMP

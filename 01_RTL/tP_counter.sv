@@ -3,8 +3,8 @@
 // Task Name   : multiple purpose timing counter
 // Module Name : tP_counter
 // File Name   : tP_counter.v
-// Description : Recode the command latency. 
-//               The purpose is prevent some timing violateions. 
+// Description : Recode the command latency.
+//               The purpose is prevent some timing violateions.
 // Author      : Chih-Yuan Chang
 // Revision History:
 // Date        : 2012.12.11
@@ -52,13 +52,13 @@ end
 reg [`ROW_BITS-1:0] tREF_counter;
 reg [4:0]tP_ba_counter ;
 reg [5:0]tRAS_counter; //purpose : prevent tRC and tRAS violation
-// recode_state_t recode;       
-//1 : recode write-to-precharge ;   prevent tWR  violation 
+// recode_state_t recode;
+//1 : recode write-to-precharge ;   prevent tWR  violation
 //2 : recode precharge-to-active ;  prevent tRP  violation
 //3 : recode active-to-read/write ; prevent tRCD violation
 //4 : recode read-to-precharge ;    prevent tRTP violation
 //5 : recode write-to-active with auto-precharge
-//6 : recode read-to-active with auto-precharge 
+//6 : recode read-to-active with auto-precharge
 always_ff@(posedge clk or negedge rst_n) begin
 if(~rst_n)
   tP_ba_counter <= 0 ;
@@ -66,7 +66,7 @@ else
   case(state_nxt)
     FSM_ACTIVE : tP_ba_counter <= (f_bank==number) ? $unsigned(`CYCLE_TRCD-1) : (tP_ba_counter==0) ? 0 : tP_ba_counter - 1 ;
 	              // tRCD  Active to Read/Write command time
-    FSM_READ : if(f_bank==number)
+    FSM_READ :  if(f_bank==number)
                     tP_ba_counter <= $unsigned(`CYCLE_TRTP-1) ; //tRTP = Read to precharge command delay
                 else
                   if(tP_ba_counter==0)
@@ -84,21 +84,23 @@ else
                     tP_ba_counter <= 0 ;
                   else
                     tP_ba_counter <= tP_ba_counter - 1 ;
-    	 
+
     FSM_PRE: tP_ba_counter <= (f_bank==number) ? $unsigned(`CYCLE_TRP-1) : (tP_ba_counter == 0) ? 0 : tP_ba_counter - 1 ;
     default   : tP_ba_counter <= (tP_ba_counter == 0) ? 0 : tP_ba_counter - 1 ;
   endcase
 end
 
-always_ff@(posedge clk or negedge rst_n) 
+always_ff@(posedge clk or negedge rst_n)
 begin: RECODE_LOGIC
 if(~rst_n)
   recode <= CODE_IDLE ;
+else if(recode == CODE_PRECHARGE_TO_ACTIVE && refresh_flag == 1'b1) // Force reencode into PRE before REF
+  recode <= CODE_PRECHARGE_TO_REFRESH;
 else
   case(state_nxt)
     // FSM_WRITE: recode <= (f_bank==number)?(auto_pre)? CODE_WRITE_TO_ACTIVE : CODE_WRITE_TO_PRECHARGE : recode ;
     FSM_WRITE:  recode <= (f_bank==number)? CODE_WRITE_TO_PRECHARGE : recode ;
-    FSM_PRE  :  
+    FSM_PRE  :
     if(refresh_flag)
       recode <= CODE_PRECHARGE_TO_REFRESH ;
     else

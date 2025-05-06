@@ -47,16 +47,17 @@ output cmd_received_f ;
 
 import usertype::*;
 
-reg [4:0]ba_counter_nxt,ba_counter ;
-// bank_state_t ba_state;
+localparam tRFC_CNT_BIT_WIDTH = 7;
+localparam tREFI_CNT_BIT_WIDTH = 12;
+
 bank_state_t ba_state_nxt;
 
 reg ba_busy ;
 reg [`ADDR_BITS-1:0] ba_addr;
 reg ba_issue ;
-reg [`ADDR_BITS-1:0] active_row_addr;
-reg [`ADDR_BITS-1:0] col_addr_buf;
-reg [`ADDR_BITS-1:0] row_addr_buf;
+reg [`ROW_BITS-1:0] active_row_addr;
+reg [`COL_BITS-1:0] col_addr_buf;
+reg [`ROW_BITS-1:0] row_addr_buf;
 
 
 command_t command_buf;
@@ -73,9 +74,9 @@ wire [`BA_BITS-1:0]bank = command_in.bank_addr ;
 reg [`ADDR_BITS-1:0]col_addr_t ;
 // process_cmd_t process_cmd ;
 
-logic[`ROW_BITS-1:0] tREFI_period_counter;
+logic[tREFI_CNT_BIT_WIDTH-1:0] tREFI_period_counter; // log2(3900) = 12
 
-logic[`ROW_BITS-1:0] tRFC_counter;
+logic[tRFC_CNT_BIT_WIDTH-1:0] tRFC_counter; // log2(110) = 7
 
 reg dummy_refresh_flag;
 wire refresh_flag = tREFI_period_counter == $unsigned(`CYCLE_REFRESH_PERIOD - 1);
@@ -166,7 +167,7 @@ end
 logic row_is_active_ff;
 wire refresh_issued_f = state == FSM_REFRESH;
 wire row_buffer_hits_f = active_row_addr == row_addr && ba_state == B_ACT_STANDBY;
-wire row_buffer_conflict_f = active_row_addr != row_addr && ba_state == B_ACT_STANDBY;
+wire row_buffer_conflict_f = ~row_buffer_hits_f;
 
 logic row_buffer_conflict_flag_ff;
 
@@ -193,10 +194,10 @@ begin
   begin
   case(ba_state)
    B_INITIAL    : ba_state_nxt = (state == FSM_IDLE) ? B_IDLE : B_INITIAL ;
-   B_IDLE       : 
+   B_IDLE       :
                   // During the IDLE state, simply enter the REFRESH CHECK state,since no row buffer is opened
                   if(refresh_flag||refresh_bit_f)
-                    ba_state_nxt = B_REFRESH_CHECK ; 
+                    ba_state_nxt = B_REFRESH_CHECK ;
                   else if(receive_command_handshake_f)
                      ba_state_nxt = B_ACTIVE ;
                    else

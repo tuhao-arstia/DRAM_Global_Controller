@@ -19,15 +19,15 @@ module TESTBED;
 
 initial begin
     `ifdef RTL
-        // $fsdbDumpfile("DRAM_Controller.fsdb");
-        // $fsdbDumpvars(0,"+all");
-        // $fsdbDumpSVA;
+        $fsdbDumpfile("DRAM_Controller.fsdb");
+        $fsdbDumpvars(0,"+all");
+        $fsdbDumpSVA;
     `endif
     `ifdef GATE
         $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
-        // $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
-        // $fsdbDumpvars(0,"+all");
-        // $fsdbDumpSVA;
+        $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
+        $fsdbDumpvars(0,"+all");
+        $fsdbDumpSVA;
     `endif
 end
 
@@ -611,7 +611,7 @@ ddr3 u_ddr3_3(
     .tdqs_n (pad_tdqs_n_bc3 ),
     .odt    (pad_odt_bc3    )
 );
-         
+
 // connect it with the pattern
 // be careful with the port name
 PATTERN u_PATTERN (

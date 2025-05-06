@@ -11,11 +11,19 @@
 
 `include "bank_FSM.sv"
 `include "tP_counter.sv"
-`include "cmd_scheduler.sv"
+`include "cmd_generator.sv"
 `include "define.sv"
 `include "Usertype.sv"
 `include "DW_fifo_s1_df.v"
 
+// Remove mode registers, make it combinational, since we dont need to mofify the setting afterwards
+// Make RD_BUF as combinational, directly connecting the ports to fifo
+// Make WD_BUF as combinational, directly connecting the ports to fifo
+// Reduce the bit widths of d_counters
+// Remove the bank_addr informations from the issue fifo, since we simply has 1 single bank
+// Remove unnecessary logics from command generators
+// Reduce the bit width of tRFC and tREFI
+// x Try reducing the rdata depth
 
 module Ctrl(
 //== I/O from System ===============
@@ -32,7 +40,7 @@ module Ctrl(
                valid,
                ba_cmd_pm,
                read_data_valid,
-              //  issue_fifo_stall,
+
                i_controller_ren,
 
 //==================================
@@ -137,11 +145,11 @@ dq_state_t dq_state,dq_state_nxt ;
 reg [9:0]init_cnt,init_cnt_next; //used for count command waiting latencys
 
 //used for read/write waiting output latencys
-reg [7:0]d0_counter,d0_counter_nxt;
-reg [7:0]d1_counter,d1_counter_nxt;
-reg [7:0]d2_counter,d2_counter_nxt;
-reg [7:0]d3_counter,d3_counter_nxt;
-reg [7:0]d4_counter,d4_counter_nxt;
+reg [2:0]d0_counter,d0_counter_nxt;
+reg [2:0]d1_counter,d1_counter_nxt;
+reg [2:0]d2_counter,d2_counter_nxt;
+reg [2:0]d3_counter,d3_counter_nxt;
+reg [2:0]d4_counter,d4_counter_nxt;
 
 reg [4:0]d_counter_used,
          d_counter_used_nxt,
@@ -153,9 +161,9 @@ reg [4:0]d_counter_used,
                                              //[4]:d4_counter
 
 // Timing constraints counters
-reg [2:0]tCCD_counter ;
-reg [3:0]tRTW_counter ;
-reg [5:0]tWTR_counter ;
+reg [1:0]tCCD_counter ; // tCCD = 3 cycles
+reg [2:0]tRTW_counter ; // tRTW = 5 cycles
+reg [4:0]tWTR_counter ; // tWTR = 8 cycles
 
 // Individual bank timing constraints counters
 wire [4:0]tP_ba0_counter;
@@ -166,16 +174,13 @@ recode_state_t tP_c0_recode;
 
 logic read_data_buf_valid;
 
-
-
-
 reg [4:0]tP_ba_cnt ;
 reg [5:0]tRAS_ba_cnt;
 
 recode_state_t tP_recode_state ; // Restore this using excel
 
 // reg [3:0]o_counter,o_counter_nxt;
-reg [3:0]dq_counter,dq_counter_nxt;
+reg [2:0]dq_counter,dq_counter_nxt;
 reg out_ff ;
 reg read_data_valid ;
 reg W_BL ;
@@ -196,7 +201,7 @@ reg act_busy ;
 
 reg [`DQ_BITS*8-1:0] WD ;
 
-reg [4:0] cmd_RW_buf ; // 0 : write , 1 : read
+// reg [4:0] cmd_RW_buf ; // 0 : write , 1 : read
 
 // reg [2:0]W_buf_ptr ;
 reg [2:0]process_BL ;
@@ -233,7 +238,7 @@ wire refresh_pre_flag = now_issue == ATCMD_PREA || now_issue == ATCMD_REFRESH;
 
 
 wire ba0_busy;
-wire [`ADDR_BITS-1:0] ba0_addr;
+wire [`ADDR_BITS-1:0] ba0_addr; // max of {row bits and col bits}
 wire [`DQ_BITS*8-1:0] ba0_wdata;
 wire [3:0]ba0_command;
 wire ba0_issue;
@@ -306,8 +311,7 @@ wire [`BA_INFO_WIDTH-1:0]ba0_info = {ba0_state,ba0_addr,ba0_process_cmd} ;
 wire [`ISU_FIFO_WIDTH-1:0] sch_out ;
 wire sch_issue ;
 
-//Command Schedular
-cmd_scheduler  scheduler(
+cmd_generator  CMD_Generator(
                          .clk      (clk           )  ,
                          .rst_n    (power_on_rst_n)     ,
                          .isu_fifo_full (isu_fifo_full) ,
@@ -338,22 +342,10 @@ wire isu_fifo_almost_empty;
 wire isu_fifo_half_full;
 wire issue_fifo_error;
 
-localparam  CTRL_FIFO_DEPTH = 6; // This is the optimal fifo depth
+localparam  CTRL_FIFO_DEPTH = 4; // This is the optimal fifo depth
 
 localparam  ISSUE_FIFO_WIDTH =  $bits(issue_fifo_cmd_in_t);
 localparam  ISSUE_FIFO_DEPTH = CTRL_FIFO_DEPTH;
-
-// issue_FIFO  isu_fifo(.clk          (clk),
-//                      .rst_n        (power_on_rst_n),
-//                      .wen          (isu_fifo_wen),
-//                      .data_in      (sch_out),
-//                      .ren          (~act_busy),
-//                      .data_out     (isu_fifo_out),
-//                      .data_out_pre (isu_fifo_out_pre),
-//                      .full         (isu_fifo_full),
-//                      .virtual_full (isu_fifo_vfull),
-//                      .empty        (isu_fifo_empty)
-//                      );
 
  DW_fifo_s1_sf_inst #(.width(ISSUE_FIFO_WIDTH),.depth(ISSUE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) isu_fifo(
     .inst_clk(clk),
@@ -371,7 +363,7 @@ localparam  ISSUE_FIFO_DEPTH = CTRL_FIFO_DEPTH;
     .data_out_inst(isu_fifo_out));
 
 localparam  WRITE_DATA_FIFO_WIDTH =  `DQ_BITS*8;
-localparam  WRITE_FIFO_DEPTH = CTRL_FIFO_DEPTH;
+localparam  WRITE_FIFO_DEPTH = 4;
 
 wire wdata_fifo_almost_empty;
 wire wdata_fifo_half_full;
@@ -394,7 +386,7 @@ DW_fifo_s1_sf_inst #(.width(WRITE_DATA_FIFO_WIDTH),.depth(WRITE_FIFO_DEPTH),.err
 
 
 localparam  READ_DATA_FIFO_WIDTH =  `DQ_BITS*8;
-localparam  READ_FIFO_DEPTH = 6;
+localparam  READ_FIFO_DEPTH = 4; // Change this to accomdate the worst case rdata
 
 wire rdata_fifo_empty;
 wire rdata_fifo_almost_empty;
@@ -404,14 +396,14 @@ wire rdata_fifo_vfull;
 wire rdata_fifo_full;
 wire [READ_DATA_FIFO_WIDTH-1:0] rdata_fifo_out;
 
-always_comb 
+always_comb
 begin: READ_DATA_OUTPUT_CTRL
-    if(~power_on_rst_n) 
+    if(~power_on_rst_n)
     begin
         read_data = 'b0;
         read_data_valid = 1'b0;
-    end 
-    else 
+    end
+    else
     begin
         read_data = rdata_fifo_out;
         read_data_valid = ~rdata_fifo_empty;
@@ -465,20 +457,12 @@ DW_fifo_s1_sf_inst #(.width(2),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)
 
 //==== Sequential =======================
 
-always@(posedge clk or negedge power_on_rst_n)
+always_comb
 begin: MODE_REGISTERS
-  if(~power_on_rst_n)begin
-  MR0 <= `MR0_CONFIG ;
-  MR1 <= `MR1_CONFIG ;
-  MR2 <= `MR2_CONFIG ;
-  MR3 <= `MR3_CONFIG ;
-  end else
-  begin
-  MR0 <= `MR0_CONFIG ;
-  MR1 <= `MR1_CONFIG ;
-  MR2 <= `MR2_CONFIG ;
-  MR3 <= `MR3_CONFIG ;
-  end
+  MR0 = `MR0_CONFIG ;
+  MR1 = `MR1_CONFIG ;
+  MR2 = `MR2_CONFIG ;
+  MR3 = `MR3_CONFIG ;
 end
 
 always@(posedge clk or negedge power_on_rst_n)
@@ -539,15 +523,6 @@ if(power_on_rst_n == 0)
 else
   d_counter_used <= d_counter_used_nxt ;
 end
-
-//output init_cnt
-// always@(posedge clk or negedge power_on_rst_n) begin
-// if(power_on_rst_n == 0)
-//   o_counter <= 0 ;
-// else
-//   o_counter <= o_counter_nxt ;
-// end
-
 
 always@(posedge clk or negedge power_on_rst_n)
 begin:tCCD_CNT
@@ -665,7 +640,7 @@ begin
 end
 else if(act_busy==0)
     if(isu_fifo_empty==0) begin
-       act_bank    <= isu_fifo_out_cmd.bank ;
+       act_bank    <= 0 ;
        act_addr    <= isu_fifo_out_cmd.addr ;
        act_command <= isu_fifo_out_cmd.command ;
     end
@@ -706,7 +681,7 @@ end
 
 always_comb
 begin: BANK_STATUS_DECODE_BLOCK
-if(isu_fifo_vfull || wdata_fifo_vfull)
+if(isu_fifo_full || wdata_fifo_full)
   ba_cmd_pm = 1'b0 ;
 else
   ba_cmd_pm = ~{ba0_busy}  ;
@@ -720,18 +695,26 @@ else
   if(d_state == D_IDLE)
     process_BL <= 0 ;
   else
-    process_BL <= (W_BL) ? $unsigned(3) : $unsigned(3) ; // Both using a burst length delay of 4
+    process_BL <= $unsigned(3) ; // Both using a burst length delay of 4
 end
 
 
-always@(posedge clk or negedge power_on_rst_n) begin
-if(power_on_rst_n == 0)
-  read_data_buf_valid <= 0 ;
-else
-  if(d_state_nxt == `D_READ_F)
-    read_data_buf_valid <= 1 ;
+always@(posedge clk or negedge power_on_rst_n)
+begin:RD_BUF_ALL
+  if(~power_on_rst_n)
+    RD_buf_all <= 0 ;
   else
+    RD_buf_all <= (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
+end
+
+always@(posedge clk or negedge power_on_rst_n) begin
+  if(~power_on_rst_n)
     read_data_buf_valid <= 0 ;
+  else
+    if(d_state_nxt == `D_READ_F)
+      read_data_buf_valid <= 1 ;
+    else
+      read_data_buf_valid <= 0 ;
 end
 
 //====================================================
@@ -931,8 +914,8 @@ begin: DQS_DATA_CONTROL
   endcase
 end
 
-always@(posedge clk) begin
-  data_all_out <= data_all_out_nxt ;
+always@(*) begin
+  data_all_out = WD ;
 end
 
 always@(posedge clk2) begin
@@ -944,10 +927,7 @@ begin: TDQS_CONTROL
   dm_tdqs_out_nxt = dm_tdqs_out ;
   if(dq_state == DQ_OUT)
   begin
-    if(W_BL==0) //Burst Length = 4
       dm_tdqs_out_nxt = (dq_counter <= 3) ? 2'b00 : 2'b11 ;
-    else //Burst_Length = 8
-      dm_tdqs_out_nxt = (dq_counter <= 7) ? 2'b00 : 2'b11 ;
   end
   else
     dm_tdqs_out_nxt = 2'b11 ;
@@ -977,13 +957,7 @@ end
 // begin:RD_BUF_ALL
 //    RD_buf_all = (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
 // end
-always@(posedge clk) begin: RD_BUF_ALL
-    if(dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) begin
-        RD_buf_all = data_all_in ;
-    end else begin
-        RD_buf_all = RD_buf_all ; 
-    end
-end
+
 
 // always@(negedge clk) begin:RD_TEMP
 // case(d_state)
@@ -1002,7 +976,7 @@ always_comb
 begin: PRE_COMMAND_DECODER_BLOCK
     if(isu_fifo_empty==0) // FIFO is not empty
     begin
-       pre_bank = isu_fifo_out_cmd_pre.bank ;
+       pre_bank = 0 ;
        pre_addr = isu_fifo_out_cmd_pre.addr ;
        pre_cmd  = isu_fifo_out_cmd_pre.command ;
     end
@@ -1159,7 +1133,7 @@ wire precharge_all_f = (now_addr[10] == 1'b1) ? 1'b1 : 1'b0 ;
 always_comb begin
   // Grabs the command from the issue fifo, then decode the command and start checking the timing constraints
 	now_issue = (isu_fifo_empty||issue_fifo_stall) ? ATCMD_NOP : isu_fifo_out_cmd.command ;
-  now_bank = (isu_fifo_empty||issue_fifo_stall) ? 1'b0 : isu_fifo_out_cmd.bank ;
+  now_bank = (isu_fifo_empty||issue_fifo_stall) ? 1'b0 : 0 ;
   now_addr = (isu_fifo_empty||issue_fifo_stall) ? 1'b0 : isu_fifo_out_cmd.addr ;
 end
 
@@ -1281,7 +1255,7 @@ begin: MAIN_FSM_NEXT_BLOCK
                       CODE_WRITE_TO_ACTIVE,
                       CODE_READ_TO_ACTIVE: state_nxt = FSM_ACTIVE ;
 
-                      CODE_ACTIVE_TO_READ_WRITE : 
+                      CODE_ACTIVE_TO_READ_WRITE :
                                 if(act_command == ATCMD_READ)
                                   if(tCCD_counter==0)
                                     state_nxt = FSM_READ ;
@@ -1298,7 +1272,7 @@ begin: MAIN_FSM_NEXT_BLOCK
                                   state_nxt = state ;
 
                       CODE_READ_TO_PRECHARGE: state_nxt = FSM_PRE ;
-                      CODE_PRECHARGE_TO_REFRESH : 
+                      CODE_PRECHARGE_TO_REFRESH :
                                 if(check_tRP_violation_flag == 1'b0)
                                   state_nxt = FSM_REFRESH ;
                                 else
@@ -1524,25 +1498,17 @@ end
 
 
 //DDR3 rst control
-always@* begin
-  rst_n = (state == FSM_POWER_UP) ? (init_cnt >= 7) ? 0 : 1 : 1 ;
+always@(posedge clk or negedge power_on_rst_n) 
+begin
+  if(~power_on_rst_n)
+    rst_n <= 1'b0 ;
+  else 
+    rst_n <= (state == FSM_POWER_UP) ? (init_cnt >= 7) ? 1'b0 : 1'b1 : 1'b1 ;
 end
 
 always_comb
 begin: RECEIVE_WRITE_DATA
 	WD = wdata_fifo_out ;
-end
-
-always@*
-begin // From slower clk domain to faster one
-  data_all_out_nxt = data_all_out;
-	if(dq_state == DQ_OUT)
-    if(W_BL==0)//Burst Length = 4
-      data_all_out_nxt = (dq_counter <= 3) ? WD : {(8*`DQ_BITS-1){1'b0}} ;
-    else//Burst_Length = 8
-      data_all_out_nxt = (dq_counter <= 7) ? WD : {(8*`DQ_BITS-1){1'b0}} ;
-  else
-    data_all_out_nxt = WD ;
 end
 
 always@*
@@ -1651,11 +1617,6 @@ always@* begin
 	    default     : dq_counter_nxt = 0 ;
 	  endcase
 end
-//=======================================
-
-// always@* begin
-//   read_data = RD_buf_all;
-// end
 
 endmodule
 

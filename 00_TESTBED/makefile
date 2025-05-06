@@ -60,6 +60,7 @@ VCS_GATE_SIM = vcs ${TIMESCALE} \
     -full64 \
     -Mupdate \
     -R \
+	${MEM_DEFINE} \
     -debug_access+all \
     -f ${source_file} \
     -o ${output_file} \

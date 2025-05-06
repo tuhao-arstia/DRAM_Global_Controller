@@ -1,0 +1,21 @@
+ 
+****************************************
+Report : clocks
+Design : DRAM_Controller
+Version: U-2022.12
+Date   : Tue May  6 18:37:03 2025
+****************************************
+
+Attributes:
+    d - dont_touch_network
+    f - fix_hold
+    p - propagated_clock
+    G - generated_clock
+    g - lib_generated_clock
+
+Clock          Period   Waveform            Attrs     Sources
+--------------------------------------------------------------------------------
+clk              1.00   {0 0.5}             d f       {clk}
+clk2             0.50   {0 0.25}            d f       {clk2}
+--------------------------------------------------------------------------------
+1

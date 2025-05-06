@@ -47,10 +47,10 @@
 ////////////////////////////////////////////////////////////////////////
 
 // Uncomment to activate the test pattern
-`define ROW_MAJOR_PATTERN
+// `define ROW_MAJOR_PATTERN
 // `define ROW_MAJOR_BANK_BURST_PATTERN
 // `define COL_MAJOR_PATTERN
-// `define COL_MAJOR_BANK_BURST_PATTERN
+`define COL_MAJOR_BANK_BURST_PATTERN
 // `define REVERSE_ROW_MAJOR_PATTERN
 // `define ALL_SAME_ADDR_PATTERN
 // `define RAW_INTERLEAVE_PATTERN
@@ -66,9 +66,9 @@
     `define BANK_BUSRT_LENGTH 1 // Useless and it should be 1
 `elsif ROW_MAJOR_BANK_BURST_PATTERN
     `define BEGIN_TEST_ROW 0
-    `define END_TEST_ROW   128
+    `define END_TEST_ROW   2
     `define BEGIN_TEST_COL 0
-    `define END_TEST_COL 16
+    `define END_TEST_COL 8
     `define TEST_ROW_STRIDE 1 // Must be power of 2
     `define TEST_COL_STRIDE 1 // Must be power of 2
     `define BANK_BUSRT_LENGTH 4 // COL_LENGTH must be a multiple of (BANK_BUSRT_LENGTH * TEST_COL_STRIDE)
@@ -806,25 +806,25 @@ end
 assign all_data_read_f = (read_data_count == `TOTAL_READ_CMD);
 
 // read_data_count
-always @(negedge i_clk or negedge i_rst_n)begin
+always @(posedge i_clk or negedge i_rst_n)begin
     if(!i_rst_n) begin
-        read_data_count = 0;
+        read_data_count <= 0;
     end else begin
         if(o_read_data_valid) begin
-            read_data_count = read_data_count + 1;
+            read_data_count <= read_data_count + 1;
         end
     end
 end
 
 // MEM_BACK
-always @(negedge i_clk)begin
+always @(posedge i_clk)begin
     if(o_read_data_valid) begin
-        mem_back[row_addr][col_addr][bank_addr] = o_read_data;
+        mem_back[row_addr][col_addr][bank_addr] <= o_read_data;
     end
 end
 
 // MEM_BACK address
-always @(negedge i_clk or negedge i_rst_n) begin
+always @(posedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         `ifdef REVERSE_ROW_MAJOR_PATTERN
             row_addr <= end_test_row-test_row_stride;
@@ -876,7 +876,7 @@ always @(negedge i_clk or negedge i_rst_n) begin
     end
 end
 
-always @(negedge i_clk or negedge i_rst_n) begin
+always @(posedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         `ifdef REVERSE_ROW_MAJOR_PATTERN
             col_addr <= end_test_col-test_col_stride;
@@ -928,7 +928,7 @@ always @(negedge i_clk or negedge i_rst_n) begin
     end
 end
 
-always @(negedge i_clk or negedge i_rst_n) begin
+always @(posedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         bank_addr <= 0;
     end else begin
@@ -962,7 +962,7 @@ always @(negedge i_clk or negedge i_rst_n) begin
     end
 end
 
-always @(negedge i_clk or negedge i_rst_n) begin
+always @(posedge i_clk or negedge i_rst_n) begin
     if(!i_rst_n) begin
         burst_cnt <= 0;
     end else begin
@@ -1242,7 +1242,7 @@ begin
 end endtask
 
 initial begin
-    #(`CLK_DEFINE * 50000)
+    #(`CLK_DEFINE * 500000);
     $display("=====================================") ;
     $display(" MAX SIMULATION CYCLES REACHED") ;
     $display("=====================================") ;

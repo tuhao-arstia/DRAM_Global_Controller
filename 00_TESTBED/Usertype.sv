@@ -156,10 +156,9 @@ typedef enum logic [2:0] {
  typedef struct packed {
   sch_cmd_t command;
   logic[`COL_BITS+`ROW_BITS-1:0] addr;
-  logic[`BA_BITS-1:0] bank;
 } issue_fifo_cmd_in_t;
 
-typedef enum logic[2:0] { 
+typedef enum logic[2:0] {
   CODE_IDLE = 0,
   CODE_WRITE_TO_PRECHARGE = 1,
   CODE_PRECHARGE_TO_ACTIVE = 2,

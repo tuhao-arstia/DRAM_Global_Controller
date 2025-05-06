@@ -699,22 +699,16 @@ else
 end
 
 
-always@(posedge clk or negedge power_on_rst_n)
+always_comb
 begin:RD_BUF_ALL
-  if(~power_on_rst_n)
-    RD_buf_all <= 0 ;
-  else
-    RD_buf_all <= (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
+    RD_buf_all = (dq_counter == 3 && d_state_nxt== D_READ_F ) ? data_all_in : 0;
 end
 
-always@(posedge clk or negedge power_on_rst_n) begin
-  if(~power_on_rst_n)
-    read_data_buf_valid <= 0 ;
-  else
-    if(d_state_nxt == `D_READ_F)
-      read_data_buf_valid <= 1 ;
+always_comb begin
+    if(d_state_nxt == D_READ_F)
+      read_data_buf_valid = 1 ;
     else
-      read_data_buf_valid <= 0 ;
+      read_data_buf_valid = 0 ;
 end
 
 //====================================================

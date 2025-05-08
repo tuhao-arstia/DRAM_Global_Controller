@@ -15,6 +15,7 @@
 `include "define.sv"
 `include "Usertype.sv"
 `include "DW_fifo_s1_df.v"
+// `include "syncFIFO.sv"
 
 // Remove mode registers, make it combinational, since we dont need to mofify the setting afterwards
 // Make RD_BUF as combinational, directly connecting the ports to fifo
@@ -369,20 +370,30 @@ wire wdata_fifo_almost_empty;
 wire wdata_fifo_half_full;
 wire wdata_fifo_error;
 
-DW_fifo_s1_sf_inst #(.width(WRITE_DATA_FIFO_WIDTH),.depth(WRITE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) wdata_fifo(
-    .inst_clk(clk),
-    .inst_rst_n(power_on_rst_n),
-    .inst_push_req_n(~wdata_fifo_wen),
-    .inst_pop_req_n(~wdata_fifo_ren),
-    .inst_diag_n(1'b1),
-    .inst_data_in(wdata_fifo_in),
-    .empty_inst(wdata_fifo_empty),
-    .almost_empty_inst( wdata_fifo_almost_empty),
-    .half_full_inst( wdata_fifo_half_full),
-    .almost_full_inst(wdata_fifo_vfull),
-    .full_inst(wdata_fifo_full),
-    .error_inst( wdata_fifo_error),
-    .data_out_inst(wdata_fifo_out));
+syncFIFO #(.WIDTH(WRITE_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) wdata_fifo(
+    .i_clk(clk),
+    .i_rst_n(power_on_rst_n),
+    .i_data(wdata_fifo_in),
+    .wr_en(wdata_fifo_wen),
+    .rd_en(wdata_fifo_ren),
+    .o_data(wdata_fifo_out),
+    .o_full(wdata_fifo_full),
+    .o_empty(wdata_fifo_empty));
+
+// DW_fifo_s1_sf_inst #(.width(WRITE_DATA_FIFO_WIDTH),.depth(WRITE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) wdata_fifo(
+//     .inst_clk(clk),
+//     .inst_rst_n(power_on_rst_n),
+//     .inst_push_req_n(~wdata_fifo_wen),
+//     .inst_pop_req_n(~wdata_fifo_ren),
+//     .inst_diag_n(1'b1),
+//     .inst_data_in(wdata_fifo_in),
+//     .empty_inst(wdata_fifo_empty),
+//     .almost_empty_inst( wdata_fifo_almost_empty),
+//     .half_full_inst( wdata_fifo_half_full),
+//     .almost_full_inst(wdata_fifo_vfull),
+//     .full_inst(wdata_fifo_full),
+//     .error_inst( wdata_fifo_error),
+//     .data_out_inst(wdata_fifo_out));
 
 
 localparam  READ_DATA_FIFO_WIDTH =  `DQ_BITS*8;
@@ -410,22 +421,32 @@ begin: READ_DATA_OUTPUT_CTRL
     end
 end
 
-DW_fifo_s1_sf_inst #(.width(READ_DATA_FIFO_WIDTH),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rdata_out_fifo(
-    .inst_clk(clk),
-    .inst_rst_n(power_on_rst_n),
-    .inst_push_req_n(~read_data_buf_valid),
-    .inst_pop_req_n(~i_controller_ren),
-    .inst_diag_n(1'b1),
-    .inst_data_in(RD_buf_all),
-    .empty_inst(rdata_fifo_empty),
-    .almost_empty_inst( rdata_fifo_almost_empty),
-    .half_full_inst( rdata_fifo_half_full),
-    .almost_full_inst(rdata_fifo_vfull),
-    .full_inst(rdata_fifo_full),
-    .error_inst(rdata_fifo_error),
-    .data_out_inst(rdata_fifo_out));
+syncFIFO #(.WIDTH(READ_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) rdata_out_fifo(
+    .i_clk(clk),
+    .i_rst_n(power_on_rst_n),
+    .i_data(RD_buf_all),
+    .wr_en(read_data_buf_valid),
+    .rd_en(i_controller_ren),
+    .o_data(rdata_fifo_out),
+    .o_full(rdata_fifo_full),
+    .o_empty(rdata_fifo_empty));
 
-assign issue_fifo_stall = rdata_fifo_half_full;
+// DW_fifo_s1_sf_inst #(.width(READ_DATA_FIFO_WIDTH),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rdata_out_fifo(
+//     .inst_clk(clk),
+//     .inst_rst_n(power_on_rst_n),
+//     .inst_push_req_n(~read_data_buf_valid),
+//     .inst_pop_req_n(~i_controller_ren),
+//     .inst_diag_n(1'b1),
+//     .inst_data_in(RD_buf_all),
+//     .empty_inst(rdata_fifo_empty),
+//     .almost_empty_inst( rdata_fifo_almost_empty),
+//     .half_full_inst( rdata_fifo_half_full),
+//     .almost_full_inst(rdata_fifo_vfull),
+//     .full_inst(rdata_fifo_full),
+//     .error_inst(rdata_fifo_error),
+//     .data_out_inst(rdata_fifo_out));
+
+assign issue_fifo_stall = rdata_fifo_full;
 
 reg out_fifo_wen;
 reg [`OUT_FIFO_WIDTH-1:0]out_fifo_in;
@@ -1611,6 +1632,78 @@ always@* begin
 	    default     : dq_counter_nxt = 0 ;
 	  endcase
 end
+
+endmodule
+
+module syncFIFO
+          #(parameter WIDTH = 4,
+            parameter DEPTH_LEN = 4) // 2^4 depth
+          (
+          i_clk, i_rst_n, i_data, wr_en,
+          rd_en, o_data, o_full, o_empty
+          );
+
+  input i_clk, i_rst_n;
+  input [WIDTH-1 : 0] i_data;
+
+  input wr_en, rd_en;
+
+  output [WIDTH-1 : 0] o_data;
+
+  reg [WIDTH-1 : 0]  mem [0:(1<<DEPTH_LEN)-1];
+
+  output  o_full;
+  output  o_empty;
+
+  // points to the address to read/write to
+  // notice extra bit
+  reg [DEPTH_LEN: 0] rd_ptr, wr_ptr;
+
+  wire rd_req, wr_req;
+
+  assign rd_req = rd_en && !o_empty;
+  assign wr_req = wr_en && !o_full;
+
+  wire [DEPTH_LEN: 0] fill;
+
+  assign fill = (wr_ptr - rd_ptr);
+  assign o_empty = (fill==0);
+  assign o_full = (fill == {1'b1, {DEPTH_LEN{1'b0}}});
+
+
+  always@(posedge i_clk, negedge i_rst_n)
+  begin
+    if(!i_rst_n)
+    begin
+      wr_ptr <= 5'h00;
+    end
+    else
+    begin
+      if(wr_req)
+      begin
+        mem[wr_ptr[DEPTH_LEN-1: 0]] <= i_data;
+        wr_ptr <= wr_ptr + 1'b1;
+      end
+    end
+  end
+
+  always@(posedge i_clk, negedge i_rst_n)
+  begin
+    if(!i_rst_n)
+    begin
+      rd_ptr <= 5'h00;
+    end
+    else
+    begin
+      if (rd_req)
+      begin
+        rd_ptr <= rd_ptr + 1'b1;
+      end
+    end
+  end
+
+  // combinational read
+  assign o_data = mem[rd_ptr[DEPTH_LEN-1: 0]];
 
 endmodule
 

@@ -18,9 +18,10 @@ package frontend_command_definition_pkg;
     typedef struct packed {
         request_op_type_t op_type;
         request_data_type_t data_type;
-        logic[`ROW_BITS-1:0] row_addr;
-        logic[`COL_BITS-1:0] col_addr;
-        logic[`BANK_BITS-1:0] bank_addr;
+        logic[`ROW_BITS+`COL_BITS+`BANK_BITS-1:0] addr;
+        // logic[`ROW_BITS-1:0] row_addr;
+        // logic[`COL_BITS-1:0] col_addr;
+        // logic[`BANK_BITS-1:0] bank_addr;
     } frontend_command_t;
 
    typedef struct packed {

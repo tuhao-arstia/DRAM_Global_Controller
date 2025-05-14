@@ -19,12 +19,12 @@ module TESTBED;
 
 initial begin
     `ifdef RTL
-        $fsdbDumpfile("DRAM_Controller.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
+        // $fsdbDumpfile("DRAM_Controller.fsdb");
+        // $fsdbDumpvars(0,"+all");
+        // $fsdbDumpSVA;
     `endif
     `ifdef GATE
-        // $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
+        $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
         // $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
         // $fsdbDumpvars(0,"+all");
         // $fsdbDumpSVA;

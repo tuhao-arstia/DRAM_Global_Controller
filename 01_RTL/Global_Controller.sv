@@ -358,7 +358,7 @@ begin : O_FRONTEND_COMMAND_VALID_BC0
     o_frontend_command_valid_bc0 = 0;
     if(!read_order_fifo_full)
     begin
-        if(i_backend_controller_ready_bc0 && command.bank_addr == 2'b00)
+        if(i_backend_controller_ready_bc0 && command.addr[1:0] == 2'b00)
         begin
             o_frontend_command_valid_bc0 = 1;
         end
@@ -370,7 +370,7 @@ begin : O_FRONTEND_COMMAND_VALID_BC1
     o_frontend_command_valid_bc1 = 0;
     if(!read_order_fifo_full)
     begin
-        if(i_backend_controller_ready_bc1 && command.bank_addr == 2'b01)
+        if(i_backend_controller_ready_bc1 && command.addr[1:0] == 2'b01)
         begin
             o_frontend_command_valid_bc1 = 1;
         end
@@ -382,7 +382,7 @@ begin : O_FRONTEND_COMMAND_VALID_BC2
     o_frontend_command_valid_bc2 = 0;
     if(!read_order_fifo_full)
     begin
-        if(i_backend_controller_ready_bc2 && command.bank_addr == 2'b10)
+        if(i_backend_controller_ready_bc2 && command.addr[1:0] == 2'b10)
         begin
             o_frontend_command_valid_bc2 = 1;
         end
@@ -394,7 +394,7 @@ begin : O_FRONTEND_COMMAND_VALID_BC3
     o_frontend_command_valid_bc3 = 0;
     if(!read_order_fifo_full)
     begin
-        if(i_backend_controller_ready_bc3 && command.bank_addr == 2'b11)
+        if(i_backend_controller_ready_bc3 && command.addr[1:0] == 2'b11)
         begin
             o_frontend_command_valid_bc3 = 1;
         end
@@ -448,23 +448,23 @@ begin : O_FRONTEND_COMMAND
         // o_frontend_command_bc3.col_addr = request_fifo_out.col_addr;
         o_frontend_command_bc0.op_type = command.op_type;
         o_frontend_command_bc0.data_type = command.data_type;
-        o_frontend_command_bc0.row_addr = command.row_addr;
-        o_frontend_command_bc0.col_addr = command.col_addr;
+        o_frontend_command_bc0.row_addr = command.addr[21:6];
+        o_frontend_command_bc0.col_addr = command.addr[5:2];
 
         o_frontend_command_bc1.op_type = command.op_type;
         o_frontend_command_bc1.data_type = command.data_type;
-        o_frontend_command_bc1.row_addr = command.row_addr;
-        o_frontend_command_bc1.col_addr = command.col_addr;
+        o_frontend_command_bc1.row_addr = command.addr[21:6];
+        o_frontend_command_bc1.col_addr = command.addr[5:2];
 
         o_frontend_command_bc2.op_type = command.op_type;
         o_frontend_command_bc2.data_type = command.data_type;
-        o_frontend_command_bc2.row_addr = command.row_addr;
-        o_frontend_command_bc2.col_addr = command.col_addr;
+        o_frontend_command_bc2.row_addr = command.addr[21:6];
+        o_frontend_command_bc2.col_addr = command.addr[5:2];
 
         o_frontend_command_bc3.op_type = command.op_type;
         o_frontend_command_bc3.data_type = command.data_type;
-        o_frontend_command_bc3.row_addr = command.row_addr;
-        o_frontend_command_bc3.col_addr = command.col_addr;
+        o_frontend_command_bc3.row_addr = command.addr[21:6];
+        o_frontend_command_bc3.col_addr = command.addr[5:2];
     end
 end
 
@@ -518,7 +518,7 @@ read_order_fifo (
     .data_out(read_order_fifo_out)
 );
 
-assign read_order_fifo_in = command.bank_addr;
+assign read_order_fifo_in = command.addr[1:0];
 
 always_comb
 begin : READ_ORDER_FIFO_WR_EN

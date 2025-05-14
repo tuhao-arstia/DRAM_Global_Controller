@@ -75,10 +75,7 @@ else
                     tP_ba_counter <= tP_ba_counter - 1 ;
 
     FSM_WRITE: if(f_bank==number)
-                    if(BL==2'b01 || BL==2'b00) //Burst length is on-the-fly or fixed 8
-                      tP_ba_counter <= $unsigned(`CYCLE_TOTAL_WL+4+`CYCLE_TWR-1) ;
-                    else //Burst length is fixed 4
-                      tP_ba_counter <= $unsigned(`CYCLE_TOTAL_WL+2+`CYCLE_TWR-1) ;
+                  tP_ba_counter <= $unsigned(`CYCLE_TOTAL_WL+2+`CYCLE_TWR-1) ;
                 else
                   if(tP_ba_counter==0)
                     tP_ba_counter <= 0 ;

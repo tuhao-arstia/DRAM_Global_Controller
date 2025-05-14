@@ -24,10 +24,10 @@ initial begin
         $fsdbDumpSVA;
     `endif
     `ifdef GATE
-        $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
-        $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
-        $fsdbDumpvars(0,"+all");
-        $fsdbDumpSVA;
+        // $sdf_annotate("DRAM_Controller_SYN.sdf", u_DRAM_Controller);
+        // $fsdbDumpfile("DRAM_Controller_SYN.fsdb");
+        // $fsdbDumpvars(0,"+all");
+        // $fsdbDumpSVA;
     `endif
 end
 

@@ -6,7 +6,8 @@
 // Description : External memory interface construction
 // Author      : YEH SHUN-LIANG
 // Revision History:
-// Date        : 2025/04/01
+// Date        : 2025/04/01 Using DW FIFO
+//             : 2025/05/09 SRQ added for area optimization
 ////////////////////////////////////////////////////////////////////////
 
 `include "bank_FSM.sv"
@@ -15,7 +16,7 @@
 `include "define.sv"
 `include "Usertype.sv"
 `include "DW_fifo_s1_df.v"
-// `include "syncFIFO.sv"
+`include "SRQ.sv"
 
 // Remove mode registers, make it combinational, since we dont need to mofify the setting afterwards
 // Make RD_BUF as combinational, directly connecting the ports to fifo
@@ -32,7 +33,6 @@ module Ctrl(
                clk,
                clk2,
 //==================================
-
 //== I/O from access command =======
                write_data,
                i_command,
@@ -149,8 +149,8 @@ reg [9:0]init_cnt,init_cnt_next; //used for count command waiting latencys
 reg [2:0]d0_counter,d0_counter_nxt;
 reg [2:0]d1_counter,d1_counter_nxt;
 reg [2:0]d2_counter,d2_counter_nxt;
-reg [2:0]d3_counter,d3_counter_nxt;
-reg [2:0]d4_counter,d4_counter_nxt;
+// reg [2:0]d3_counter,d3_counter_nxt;
+// reg [2:0]d4_counter,d4_counter_nxt;
 
 reg [4:0]d_counter_used,
          d_counter_used_nxt,
@@ -348,20 +348,30 @@ localparam  CTRL_FIFO_DEPTH = 4; // This is the optimal fifo depth
 localparam  ISSUE_FIFO_WIDTH =  $bits(issue_fifo_cmd_in_t);
 localparam  ISSUE_FIFO_DEPTH = CTRL_FIFO_DEPTH;
 
- DW_fifo_s1_sf_inst #(.width(ISSUE_FIFO_WIDTH),.depth(ISSUE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) isu_fifo(
-    .inst_clk(clk),
-    .inst_rst_n(power_on_rst_n),
-    .inst_push_req_n(~isu_fifo_wen),
-    .inst_pop_req_n(act_busy),
-    .inst_diag_n(1'b1),
-    .inst_data_in(sch_out),
-    .empty_inst(isu_fifo_empty),
-    .almost_empty_inst(isu_fifo_almost_empty),
-    .half_full_inst( isu_fifo_half_full),
-    .almost_full_inst(isu_fifo_vfull),
-    .full_inst(isu_fifo_full),
-    .error_inst( issue_fifo_error),
-    .data_out_inst(isu_fifo_out));
+syncFIFO #(.WIDTH(ISSUE_FIFO_WIDTH),.DEPTH_LEN(2)) isu_fifo(
+    .i_clk(clk),
+    .i_rst_n(power_on_rst_n),
+    .i_data(sch_out),
+    .wr_en(isu_fifo_wen),
+    .rd_en(~act_busy),
+    .o_data(isu_fifo_out),
+    .o_full(isu_fifo_full),
+    .o_empty(isu_fifo_empty));
+
+// DW_fifo_s1_sf_inst #(.width(ISSUE_FIFO_WIDTH),.depth(ISSUE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) isu_fifo(
+//     .inst_clk(clk),
+//     .inst_rst_n(power_on_rst_n),
+//     .inst_push_req_n(~isu_fifo_wen),
+//     .inst_pop_req_n(act_busy),
+//     .inst_diag_n(1'b1),
+//     .inst_data_in(sch_out),
+//     .empty_inst(isu_fifo_empty),
+//     .almost_empty_inst(isu_fifo_almost_empty),
+//     .half_full_inst( isu_fifo_half_full),
+//     .almost_full_inst(isu_fifo_vfull),
+//     .full_inst(isu_fifo_full),
+//     .error_inst( issue_fifo_error),
+//     .data_out_inst(isu_fifo_out));
 
 localparam  WRITE_DATA_FIFO_WIDTH =  `DQ_BITS*8;
 localparam  WRITE_FIFO_DEPTH = 4;
@@ -369,16 +379,30 @@ localparam  WRITE_FIFO_DEPTH = 4;
 wire wdata_fifo_almost_empty;
 wire wdata_fifo_half_full;
 wire wdata_fifo_error;
+wire wdata_fifo_out_valid;
 
-syncFIFO #(.WIDTH(WRITE_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) wdata_fifo(
-    .i_clk(clk),
-    .i_rst_n(power_on_rst_n),
-    .i_data(wdata_fifo_in),
-    .wr_en(wdata_fifo_wen),
-    .rd_en(wdata_fifo_ren),
-    .o_data(wdata_fifo_out),
-    .o_full(wdata_fifo_full),
-    .o_empty(wdata_fifo_empty));
+SRQ #(.WIDTH(WRITE_DATA_FIFO_WIDTH),.DEPTH(WRITE_FIFO_DEPTH)) wdata_fifo(
+    .clk(clk),
+    .rst(power_on_rst_n),
+    .push(wdata_fifo_wen),
+    .out_valid(wdata_fifo_out_valid),
+    .data_in(wdata_fifo_in),
+    .pop(wdata_fifo_ren),
+    .data_out(wdata_fifo_out),
+    .full(wdata_fifo_full),
+    .empty(wdata_fifo_empty),
+    .error_flag(wdata_fifo_error)
+);
+
+// syncFIFO #(.WIDTH(WRITE_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) wdata_fifo(
+//     .i_clk(clk),
+//     .i_rst_n(power_on_rst_n),
+//     .i_data(wdata_fifo_in),
+//     .wr_en(wdata_fifo_wen),
+//     .rd_en(wdata_fifo_ren),
+//     .o_data(wdata_fifo_out),
+//     .o_full(wdata_fifo_full),
+//     .o_empty(wdata_fifo_empty));
 
 // DW_fifo_s1_sf_inst #(.width(WRITE_DATA_FIFO_WIDTH),.depth(WRITE_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) wdata_fifo(
 //     .inst_clk(clk),
@@ -405,6 +429,7 @@ wire rdata_fifo_half_full;
 wire rdata_fifo_error;
 wire rdata_fifo_vfull;
 wire rdata_fifo_full;
+wire rdata_fifo_out_valid;
 wire [READ_DATA_FIFO_WIDTH-1:0] rdata_fifo_out;
 
 always_comb
@@ -417,21 +442,34 @@ begin: READ_DATA_OUTPUT_CTRL
     else
     begin
         read_data = rdata_fifo_out;
-        read_data_valid = ~rdata_fifo_empty;
+        read_data_valid = rdata_fifo_out_valid;
     end
 end
 
-syncFIFO #(.WIDTH(READ_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) rdata_out_fifo(
-    .i_clk(clk),
-    .i_rst_n(power_on_rst_n),
-    .i_data(RD_buf_all),
-    .wr_en(read_data_buf_valid),
-    .rd_en(i_controller_ren),
-    .o_data(rdata_fifo_out),
-    .o_full(rdata_fifo_full),
-    .o_empty(rdata_fifo_empty));
+SRQ #(.WIDTH(READ_DATA_FIFO_WIDTH),.DEPTH(READ_FIFO_DEPTH)) rdata_out_fifo(
+    .clk(clk),
+    .rst(power_on_rst_n),
+    .push(read_data_buf_valid),
+    .out_valid(rdata_fifo_out_valid),
+    .data_in(RD_buf_all),
+    .pop(i_controller_ren),
+    .data_out(rdata_fifo_out),
+    .full(rdata_fifo_full),
+    .empty(rdata_fifo_empty),
+    .error_flag(rdata_fifo_error)
+);
 
-// DW_fifo_s1_sf_inst #(.width(READ_DATA_FIFO_WIDTH),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rdata_out_fifo(
+// syncFIFO #(.WIDTH(READ_DATA_FIFO_WIDTH),.DEPTH_LEN(2)) rdata_out_fifo(
+//     .i_clk(clk),
+//     .i_rst_n(power_on_rst_n),
+//     .i_data(RD_buf_all),
+//     .wr_en(read_data_buf_valid),
+//     .rd_en(i_controller_ren),
+//     .o_data(rdata_fifo_out),
+//     .o_full(rdata_fifo_full),
+//     .o_empty(rdata_fifo_empty));
+
+// DW_fifo_s1_sf_inst #(.width(READ_DATA_FIFO_WIDTH),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(3)) rdata_out_fifo(
 //     .inst_clk(clk),
 //     .inst_rst_n(power_on_rst_n),
 //     .inst_push_req_n(~read_data_buf_valid),
@@ -460,20 +498,30 @@ wire out_fifo_half_full;
 wire out_fifo_almost_full;
 wire out_fifo_error;
 
-DW_fifo_s1_sf_inst #(.width(2),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rw_cmd_out_fifo(
-    .inst_clk(clk),
-    .inst_rst_n(power_on_rst_n),
-    .inst_push_req_n(~out_fifo_wen),
-    .inst_pop_req_n(~out_fifo_ren),
-    .inst_diag_n(1'b1),
-    .inst_data_in(out_fifo_in),
-    .empty_inst(out_fifo_empty),
-    .almost_empty_inst( out_fifo_almost_empty),
-    .half_full_inst( out_fifo_half_full),
-    .almost_full_inst(out_fifo_vfull),
-    .full_inst(out_fifo_full),
-    .error_inst( out_fifo_error),
-    .data_out_inst(out_fifo_out));
+syncFIFO #(.WIDTH(2),.DEPTH_LEN(2)) rw_cmd_out_fifo(
+    .i_clk(clk),
+    .i_rst_n(power_on_rst_n),
+    .i_data(out_fifo_in),
+    .wr_en(out_fifo_wen),
+    .rd_en(out_fifo_ren),
+    .o_data(out_fifo_out),
+    .o_full(out_fifo_full),
+    .o_empty(out_fifo_empty));
+
+// DW_fifo_s1_sf_inst #(.width(2),.depth(READ_FIFO_DEPTH),.err_mode(2),.rst_mode(0)) rw_cmd_out_fifo(
+//     .inst_clk(clk),
+//     .inst_rst_n(power_on_rst_n),
+//     .inst_push_req_n(~out_fifo_wen),
+//     .inst_pop_req_n(~out_fifo_ren),
+//     .inst_diag_n(1'b1),
+//     .inst_data_in(out_fifo_in),
+//     .empty_inst(out_fifo_empty),
+//     .almost_empty_inst( out_fifo_almost_empty),
+//     .half_full_inst( out_fifo_half_full),
+//     .almost_full_inst(out_fifo_vfull),
+//     .full_inst(out_fifo_full),
+//     .error_inst( out_fifo_error),
+//     .data_out_inst(out_fifo_out));
 
 
 //==== Sequential =======================
@@ -526,15 +574,15 @@ if(power_on_rst_n == 0) begin
   d0_counter <= 0 ;
   d1_counter <= 0 ;
   d2_counter <= 0 ;
-  d3_counter <= 0 ;
-  d4_counter <= 0 ;
+  // d3_counter <= 0 ;
+  // d4_counter <= 0 ;
 end
 else begin
   d0_counter <= d0_counter_nxt ;
   d1_counter <= d1_counter_nxt ;
   d2_counter <= d2_counter_nxt ;
-  d3_counter <= d3_counter_nxt ;
-  d4_counter <= d4_counter_nxt ;
+  // d3_counter <= d3_counter_nxt ;
+  // d4_counter <= d4_counter_nxt ;
 end
 end
 
@@ -754,6 +802,7 @@ begin: DRAM_PHY_CK_CS_RAS_CAS_WE
       FSM_WRITE    : {cke,cs_n,ras_n,cas_n,we_n} <= `CMD_WRITE ;
       FSM_PRE      : {cke,cs_n,ras_n,cas_n,we_n} <= `CMD_PRECHARGE ;
       FSM_REFRESH  : {cke,cs_n,ras_n,cas_n,we_n} <= `CMD_REFRESH ;
+      // DUMMY REFERSH
       default : {cke,cs_n,ras_n,cas_n,we_n} <= `CMD_NOP ;
     endcase
   end
@@ -795,6 +844,7 @@ always@(negedge clk or negedge power_on_rst_n) begin: DRAM_PHY_BA
       FSM_WRITE ,FSM_WRITEA   : ba <= 0;//act_bank ;
       FSM_PRE      : ba <= 0;//act_bank ;
       FSM_REFRESH  : ba <= 0 ;
+      // DUMMY REFERSH
       default : ba <= ba ;
     endcase
   end
@@ -893,23 +943,20 @@ begin: DQS_DATA_CONTROL
                   dqs_n_out_nxt = ~dqs_n_out ;
                 end
     `D_WRITE_F: if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                   d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                   d4_counter == $unsigned(`CYCLE_TOTAL_WL-1-1)) begin
+                   d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ) begin
 
                    dqs_out_nxt = ~dqs_out ;
                    dqs_n_out_nxt = ~dqs_n_out ;
 
                 end
                 else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-                        d4_counter == $unsigned(`CYCLE_TOTAL_WL-1)) begin
+                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1)) begin
 
                    dqs_out_nxt = ~dqs_out ;
                    dqs_n_out_nxt = ~dqs_n_out ;
                 end
                 else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) ||
-                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) ||
-                        d4_counter == $unsigned(`CYCLE_TOTAL_WL-1+1)) begin
+                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1+1)) begin
 
                    dqs_out_nxt = ~dqs_out ;
                    dqs_n_out_nxt = ~dqs_n_out ;
@@ -947,44 +994,6 @@ begin: TDQS_CONTROL
   else
     dm_tdqs_out_nxt = 2'b11 ;
 end
-
-// Simulation TEST signals
-// always@(negedge clk)
-// begin: RD_BUF_EVEN
-
-// RD_buf[0] <= (dq_counter == 2 && (d_state == D_READ2 || d_state == D_WAIT_CL_READ) ) ? RD_temp : RD_buf[0];
-// RD_buf[2] <= (dq_counter == 2 && d_state == D_READ2) ? data_in : RD_buf[2];
-// RD_buf[4] <= (dq_counter == 4 && d_state ==D_READ2) ? data_in : RD_buf[4];
-// RD_buf[6] <= (dq_counter == 6 && d_state == D_READ2) ? data_in : RD_buf[6];
-
-// end
-
-// always@(posedge clk) begin: RD_BUF_ODD
-
-// RD_buf[1] <= (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_in : RD_buf[1];
-// RD_buf[3] <= (dq_counter == 3 && d_state == D_READ2) ? data_in : RD_buf[3];
-// RD_buf[5] <= (dq_counter == 5 && d_state == D_READ2) ? data_in : RD_buf[5];
-// RD_buf[7] <= (dq_counter == 7 && d_state == D_READ2) ? data_in : RD_buf[7];
-
-// end
-
-// always_comb
-// begin:RD_BUF_ALL
-//    RD_buf_all = (dq_counter == 1 && (d_state == D_READ2 || d_state == D_READ_F) ) ? data_all_in : RD_buf_all;
-// end
-
-
-// always@(negedge clk) begin:RD_TEMP
-// case(d_state)
-
-//   D_READ_F  :  RD_temp <= data_in ;
-
-//   D_READ2   :  RD_temp <= data_in ;
-
-//   default    :  RD_temp <= RD_temp ;
-
-// endcase
-// end
 
 //synopsys translate_off
 always_comb
@@ -1199,6 +1208,7 @@ begin: MAIN_FSM_NEXT_BLOCK
    FSM_WRITEA,
    // TODO Add ATCMD_WRA,ATCMD_RDA
    FSM_READY     :  case(now_issue) // When issuing command, checks for the timing violation
+                        // ATCMD_DUMMY_REFRESH:
                        ATCMD_REFRESH  : state_nxt = (state ==FSM_PRE) ? FSM_WAIT_TRP : FSM_REFRESH ; // This needs to be modified to wait TRP instead.
                        ATCMD_NOP      : state_nxt = FSM_READY;
                        ATCMD_ACTIVE   : if(check_tRC_violation_flag == 1'b1)//tRC violation
@@ -1350,15 +1360,11 @@ begin: DQ_CONTROLLER
                    d_state_nxt = D_IDLE ;
    D_WAIT_CL_READ  : d_state_nxt = ( d0_counter >= $unsigned(`CYCLE_TOTAL_RL-1) || // Read latency
                                      d1_counter >= $unsigned(`CYCLE_TOTAL_RL-1) ||
-                                     d2_counter >= $unsigned(`CYCLE_TOTAL_RL-1) ||
-                                     d3_counter >= $unsigned(`CYCLE_TOTAL_RL-1) ||
-                                     d4_counter >= $unsigned(`CYCLE_TOTAL_RL-1)  ) ? D_READ1 : D_WAIT_CL_READ ;
+                                     d2_counter >= $unsigned(`CYCLE_TOTAL_RL-1)  ) ? D_READ1 : D_WAIT_CL_READ ;
 
    D_WAIT_CL_WRITE : d_state_nxt = (d0_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1) || // Write latency
                                      d1_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                                     d2_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                                     d3_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                                     d4_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1)  ) ? D_WRITE1 : D_WAIT_CL_WRITE ;
+                                     d2_counter >= $unsigned(`CYCLE_TOTAL_WL-1-1)  ) ? D_WRITE1 : D_WAIT_CL_WRITE ;
    D_WRITE1    : d_state_nxt = D_WRITE2 ;
    D_WRITE2    : d_state_nxt = (dq_counter[2:0] == process_BL) ? D_WRITE_F : D_WRITE2 ;
    D_WRITE_F   :if(d_counter_used == 0) // Corresponding to the burst length of 4?
@@ -1370,16 +1376,13 @@ begin: DQ_CONTROLLER
 		                 d_state_nxt = D_IDLE ;
 		             else
 		               if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-		                  d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-		                  d4_counter == $unsigned(`CYCLE_TOTAL_WL-1-1)  )
+		                  d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1))
 		                 d_state_nxt = D_WRITE1 ;
 		               else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-		                       d2_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-		                       d4_counter == $unsigned(`CYCLE_TOTAL_WL-1)  )
+		                       d2_counter == $unsigned(`CYCLE_TOTAL_WL-1))
 		                 d_state_nxt = D_WRITE2 ;
 		               else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) ||
-		                       d2_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1+1) ||
-		                       d4_counter == $unsigned(`CYCLE_TOTAL_WL-1+1)  )
+		                       d2_counter == $unsigned(`CYCLE_TOTAL_WL-1+1))
 		                 d_state_nxt = D_WRITE2 ;
 		               else
 		                 d_state_nxt = D_WAIT_CL_WRITE ;
@@ -1396,21 +1399,18 @@ begin: DQ_CONTROLLER
 		            else begin
                   if(out_fifo_out[1] == 1'b0) begin  //write
 				                if(d0_counter == `CYCLE_TOTAL_WL-1-1 || d1_counter == `CYCLE_TOTAL_WL-1-1 ||
-				                   d2_counter == `CYCLE_TOTAL_WL-1-1 || d3_counter == `CYCLE_TOTAL_WL-1-1 ||
-				                   d4_counter == `CYCLE_TOTAL_WL-1-1  )
+				                   d2_counter == `CYCLE_TOTAL_WL-1-1  )
 
 				                  d_state_nxt = D_WRITE1 ;
 
 
 				                else if(d0_counter == `CYCLE_TOTAL_WL-1 || d1_counter == `CYCLE_TOTAL_WL-1 ||
-				                        d2_counter == `CYCLE_TOTAL_WL-1 || d3_counter == `CYCLE_TOTAL_WL-1 ||
-				                        d4_counter == `CYCLE_TOTAL_WL-1  )
+				                        d2_counter == `CYCLE_TOTAL_WL-1 )
 
 				                  d_state_nxt = D_WRITE2 ;
 
 				                else if(d0_counter == `CYCLE_TOTAL_WL-1+1 || d1_counter == `CYCLE_TOTAL_WL-1+1 ||
-				                        d2_counter == `CYCLE_TOTAL_WL-1+1 || d3_counter == `CYCLE_TOTAL_WL-1+1 ||
-				                        d4_counter == `CYCLE_TOTAL_WL-1+1  )
+				                        d2_counter == `CYCLE_TOTAL_WL-1+1)
 
 				                  d_state_nxt = D_WRITE2 ;
 
@@ -1421,20 +1421,17 @@ begin: DQ_CONTROLLER
 		               else
                         //read
 				                if(d0_counter == $unsigned(`CYCLE_TOTAL_RL-1+2) || d1_counter == $unsigned(`CYCLE_TOTAL_RL-1+2) ||
-				                   d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+2) || d3_counter == $unsigned(`CYCLE_TOTAL_RL-1+2) ||
-				                   d4_counter == $unsigned(`CYCLE_TOTAL_RL-1+2)  )
+				                   d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+2))
 
 				                  d_state_nxt = D_READ2 ;
 
 				                else if(d0_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d1_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-				                        d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d3_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-				                        d4_counter == $unsigned(`CYCLE_TOTAL_RL-1+1)  )
+				                        d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) )
 
 				                  d_state_nxt = D_READ2 ;
 
 				                else if(d0_counter == $unsigned(`CYCLE_TOTAL_RL-1 )|| d1_counter == $unsigned(`CYCLE_TOTAL_RL-1 )||
-				                        d2_counter == $unsigned(`CYCLE_TOTAL_RL-1 )|| d3_counter == $unsigned(`CYCLE_TOTAL_RL-1 )||
-				                        d4_counter == $unsigned(`CYCLE_TOTAL_RL-1  ))
+				                        d2_counter == $unsigned(`CYCLE_TOTAL_RL-1 ))
 
 				                  d_state_nxt = D_READ1 ;
 
@@ -1456,12 +1453,10 @@ always@* begin
                    D_WRITE1 : dq_state_nxt =DQ_OUT ;
                    D_WRITE2 : dq_state_nxt =DQ_OUT ;
                    D_WRITE_F : if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                                   d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-                                   d4_counter == $unsigned(`CYCLE_TOTAL_WL-1-1))
+                                   d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) )
                                   dq_state_nxt = DQ_IDLE ;
                                 else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d1_counter ==$unsigned( `CYCLE_TOTAL_WL-1) ||
-                                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-                                        d4_counter == $unsigned(`CYCLE_TOTAL_WL-1))
+                                        d2_counter == $unsigned(`CYCLE_TOTAL_WL-1))
                                   dq_state_nxt = DQ_OUT ;
                                 else
                                   dq_state_nxt = DQ_IDLE ;
@@ -1473,8 +1468,7 @@ always@* begin
                               else if(out_fifo_out[1]==1'b0)//write
                                 dq_state_nxt = DQ_OUT ;
                               else if(d0_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d1_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-	                                  d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d3_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-	                                  d4_counter == $unsigned(`CYCLE_TOTAL_RL-1+1))
+	                                  d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1))
 	                                  dq_state_nxt = DQ_OUT ;
 	                               else
 	                                  dq_state_nxt = DQ_IDLE ;
@@ -1486,20 +1480,17 @@ always@* begin
    DQ_OUT     : begin
       if(d_state_nxt == D_WRITE_F)
 	                   if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-	                      d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1-1) ||
-	                      d4_counter == $unsigned(`CYCLE_TOTAL_WL-1-1))
+	                      d2_counter == $unsigned(`CYCLE_TOTAL_WL-1-1))
 	                     dq_state_nxt = DQ_IDLE ;
 	                   else if(d0_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d1_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-	                           d2_counter == $unsigned(`CYCLE_TOTAL_WL-1) || d3_counter == $unsigned(`CYCLE_TOTAL_WL-1) ||
-	                           d4_counter == $unsigned(`CYCLE_TOTAL_WL-1))
+	                           d2_counter == $unsigned(`CYCLE_TOTAL_WL-1) )
 	                     dq_state_nxt = DQ_OUT ;
 	                   else
 	                     dq_state_nxt = DQ_IDLE ;
 
                  else if(d_state_nxt == D_READ_F)
                    	 if(d0_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d1_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-	                      d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) || d3_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) ||
-	                      d4_counter == $unsigned(`CYCLE_TOTAL_RL-1+1))
+	                      d2_counter == $unsigned(`CYCLE_TOTAL_RL-1+1) )
                        dq_state_nxt = DQ_OUT ;
                      else
                        dq_state_nxt = DQ_IDLE ;
@@ -1513,11 +1504,11 @@ end
 
 
 //DDR3 rst control
-always@(posedge clk or negedge power_on_rst_n) 
+always@(posedge clk or negedge power_on_rst_n)
 begin
   if(~power_on_rst_n)
     rst_n <= 1'b0 ;
-  else 
+  else
     rst_n <= (state == FSM_POWER_UP) ? (init_cnt >= 7) ? 1'b0 : 1'b1 : 1'b1 ;
 end
 
@@ -1530,29 +1521,17 @@ always@*
 begin: D_COUNTER_USED_BLOCK
 
 d_counter_used_end[0] = (d_counter_used[0]) ? (d0_counter > d1_counter &&
-                                               d0_counter > d2_counter &&
-                                               d0_counter > d3_counter &&
-                                               d0_counter > d4_counter    ) ? 1'b0 : 1'b1 : 1'b0 ;
+                                               d0_counter > d2_counter ) ? 1'b0 : 1'b1 : 1'b0 ;
 
 d_counter_used_end[1] = (d_counter_used[1]) ? (d1_counter > d0_counter &&
-                                               d1_counter > d2_counter &&
-                                               d1_counter > d3_counter &&
-                                               d1_counter > d4_counter   ) ? 1'b0 : 1'b1 : 1'b0 ;
+                                               d1_counter > d2_counter) ? 1'b0 : 1'b1 : 1'b0 ;
 
 d_counter_used_end[2] = (d_counter_used[2]) ? (d2_counter > d0_counter &&
-                                               d2_counter > d1_counter &&
-                                               d2_counter > d3_counter &&
-                                               d2_counter > d4_counter   ) ? 1'b0 : 1'b1 : 1'b0 ;
+                                               d2_counter > d1_counter ) ? 1'b0 : 1'b1 : 1'b0 ;
 
-d_counter_used_end[3] = (d_counter_used[3]) ? (d3_counter > d0_counter &&
-                                               d3_counter > d1_counter &&
-                                               d3_counter > d2_counter &&
-                                               d3_counter > d4_counter   ) ? 1'b0 : 1'b1 : 1'b0 ;
+d_counter_used_end[3] = 0;
 
-d_counter_used_end[4] = (d_counter_used[4]) ? (d4_counter > d0_counter &&
-                                               d4_counter > d1_counter &&
-                                               d4_counter > d2_counter &&
-                                               d4_counter > d3_counter   ) ? 1'b0 : 1'b1 : 1'b0 ;
+d_counter_used_end[4] = 0;
 
 
 case(d_counter_used)
@@ -1600,8 +1579,6 @@ if( (d_state == D_WRITE2 && d_state_nxt == D_WRITE_F) ||
     d_counter_used_nxt[0] = (d_counter_used[0]==0 && d_counter_used_start[0]==1) ? d_counter_used_start[0] : d_counter_used_end[0] ;
     d_counter_used_nxt[1] = (d_counter_used[1]==0 && d_counter_used_start[1]==1) ? d_counter_used_start[1] : d_counter_used_end[1] ;
     d_counter_used_nxt[2] = (d_counter_used[2]==0 && d_counter_used_start[2]==1) ? d_counter_used_start[2] : d_counter_used_end[2] ;
-    d_counter_used_nxt[3] = (d_counter_used[3]==0 && d_counter_used_start[3]==1) ? d_counter_used_start[3] : d_counter_used_end[3] ;
-    d_counter_used_nxt[4] = (d_counter_used[4]==0 && d_counter_used_start[4]==1) ? d_counter_used_start[4] : d_counter_used_end[4] ;
   end
   else
     d_counter_used_nxt = d_counter_used_end ;
@@ -1620,8 +1597,6 @@ always@* begin
  d0_counter_nxt = ( d_counter_used_nxt[0] ) ? d0_counter + 1 : 0 ;
  d1_counter_nxt = ( d_counter_used_nxt[1] ) ? d1_counter + 1 : 0 ;
  d2_counter_nxt = ( d_counter_used_nxt[2] ) ? d2_counter + 1 : 0 ;
- d3_counter_nxt = ( d_counter_used_nxt[3] ) ? d3_counter + 1 : 0 ;
- d4_counter_nxt = ( d_counter_used_nxt[4] ) ? d4_counter + 1 : 0 ;
 end
 
 
@@ -1670,12 +1645,17 @@ module syncFIFO
   assign o_empty = (fill==0);
   assign o_full = (fill == {1'b1, {DEPTH_LEN{1'b0}}});
 
+  integer i;
+
 
   always@(posedge i_clk, negedge i_rst_n)
   begin
     if(!i_rst_n)
     begin
       wr_ptr <= 5'h00;
+      for(i=0; i<(1<<DEPTH_LEN); i=i+1) begin
+        mem[i] <= {WIDTH{1'b0}};
+      end
     end
     else
     begin

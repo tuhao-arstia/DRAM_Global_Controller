@@ -209,11 +209,11 @@ end
     // .error(request_fifo_error),
     // .data_out(request_fifo_out)
 // );
-// 
+//
 // always_comb
 // begin : REQUEST_FIFO_WR_EN
     // request_wr_en = 0;
-// 
+//
     // if(!request_fifo_full)
     // begin
         // request_wr_en = hs_request_channel;
@@ -223,11 +223,11 @@ end
         // request_wr_en = hs_request_channel && command_transaction;
     // end
 // end
-// 
+//
 // always_comb
 // begin : REQUEST_FIFO_RD_EN
     // request_rd_en = 0;
-// 
+//
     // if(!request_fifo_empty)
     // begin
         // case (request_fifo_out.bank_addr)
@@ -246,7 +246,7 @@ end
         // endcase
     // end
 // end
-// 
+//
 // assign request_fifo_in = command;
 
 // write data fifo
@@ -266,11 +266,11 @@ end
     // .error(write_data_fifo_error),
     // .data_out(write_data_fifo_out)
 // );
-// 
+//
 // always_comb
 // begin : WRITE_DATA_FIFO_WR_EN
     // write_data_wr_en = 0;
-// 
+//
     // if(command.op_type == OP_WRITE)
     // begin
         // if(!request_fifo_full)
@@ -283,11 +283,11 @@ end
         // end
     // end
 // end
-// 
+//
 // always_comb
 // begin : WRITE_DATA_FIFO_RD_EN
     // write_data_rd_en = 0;
-// 
+//
     // if(!request_fifo_empty)
     // begin
         // if(request_fifo_out.op_type == OP_WRITE)
@@ -316,7 +316,7 @@ assign command_transaction = command_transaction_0 || command_transaction_1 || c
         // end
     // end
 // end
-// 
+//
 // always_comb
 // begin : O_FRONTEND_COMMAND_VALID_BC1
     // o_frontend_command_valid_bc1 = 0;
@@ -328,7 +328,7 @@ assign command_transaction = command_transaction_0 || command_transaction_1 || c
         // end
     // end
 // end
-// 
+//
 // always_comb
 // begin : O_FRONTEND_COMMAND_VALID_BC2
     // o_frontend_command_valid_bc2 = 0;
@@ -340,7 +340,7 @@ assign command_transaction = command_transaction_0 || command_transaction_1 || c
         // end
     // end
 // end
-// 
+//
 // always_comb
 // begin : O_FRONTEND_COMMAND_VALID_BC3
     // o_frontend_command_valid_bc3 = 0;
@@ -431,17 +431,17 @@ begin : O_FRONTEND_COMMAND
         // o_frontend_command_bc0.data_type = request_fifo_out.data_type;
         // o_frontend_command_bc0.row_addr = request_fifo_out.row_addr;
         // o_frontend_command_bc0.col_addr = request_fifo_out.col_addr;
-// 
+//
         // o_frontend_command_bc1.op_type = request_fifo_out.op_type;
         // o_frontend_command_bc1.data_type = request_fifo_out.data_type;
         // o_frontend_command_bc1.row_addr = request_fifo_out.row_addr;
         // o_frontend_command_bc1.col_addr = request_fifo_out.col_addr;
-// 
+//
         // o_frontend_command_bc2.op_type = request_fifo_out.op_type;
         // o_frontend_command_bc2.data_type = request_fifo_out.data_type;
         // o_frontend_command_bc2.row_addr = request_fifo_out.row_addr;
         // o_frontend_command_bc2.col_addr = request_fifo_out.col_addr;
-// 
+//
         // o_frontend_command_bc3.op_type = request_fifo_out.op_type;
         // o_frontend_command_bc3.data_type = request_fifo_out.data_type;
         // o_frontend_command_bc3.row_addr = request_fifo_out.row_addr;
